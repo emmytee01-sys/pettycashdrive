@@ -292,7 +292,7 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                   Next Step <ArrowRight className="w-6 h-6" />
                 </button>
               </>
-            ) : (
+            ) : step === 2 ? (
               <>
                 <h2 className="text-3xl font-black mb-4">Car Valuation</h2>
                 <p className="text-slate-500 mb-12">Kindly provide your car details in the form below.</p>
