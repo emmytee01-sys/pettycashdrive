@@ -87,8 +87,6 @@ const Navbar = () => {
   );
 };
 
-  );
-};
 
 const StatCard: FC<{ value: string; label: string }> = ({ value, label }) => (
   <div className="text-center">
