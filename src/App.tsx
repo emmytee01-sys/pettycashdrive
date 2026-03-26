@@ -1,18 +1,16 @@
-import { FC, ReactNode, useState, useEffect } from "react";
+import { useState, useEffect, type FC, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Shield, 
   Clock, 
   Car, 
   CreditCard, 
-  ChevronRight, 
   CheckCircle2, 
   Menu, 
   X, 
   ArrowRight,
   User,
   Star,
-  Users,
   Zap
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
@@ -89,18 +87,8 @@ const Navbar = () => {
   );
 };
 
-const FeatureCard: FC<{ title: string; desc: string; icon: ReactNode }> = ({ title, desc, icon }) => (
-  <motion.div 
-    whileHover={{ y: -5 }}
-    className="bg-card/50 p-8 rounded-2xl border border-white/5 hover:border-primary/50 transition-all group"
-  >
-    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
-      {icon}
-    </div>
-    <h3 className="text-xl font-bold mb-3 text-white">{title}</h3>
-    <p className="text-muted-foreground leading-relaxed">{desc}</p>
-  </motion.div>
-);
+  );
+};
 
 const StatCard: FC<{ value: string; label: string }> = ({ value, label }) => (
   <div className="text-center">
