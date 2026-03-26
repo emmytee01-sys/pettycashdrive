@@ -140,14 +140,18 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
           <h1 className="text-4xl lg:text-6xl font-black text-white leading-tight mb-8">
             {step === 1 ? (
               <>Your loan offer <br /> is just a <span className="text-primary">few simple</span> <br /> steps away.</>
-            ) : (
+            ) : step === 2 ? (
               <>Valuing your car <br /> can get you a <span className="text-primary">loan offer</span> <br /> tailored to its worth.</>
+            ) : (
+              <>Application <br /> successfully <span className="text-primary">submitted.</span></>
             )}
           </h1>
           <p className="text-white/60 text-xl max-w-sm mb-12">
             {step === 1 
               ? "Tell us a little about yourself, and we'll prepare your instant loan offer right where you are."
-              : "Let's value your car together and show you how much you can access instantly."
+              : step === 2 
+              ? "Let's value your car together and show you how much you can access instantly."
+              : "Great job! Your application is now being processed by our automated systems."
             }
           </p>
           
@@ -158,7 +162,7 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                     <User className="w-6 h-6" />
                   </div>
                   <div className="h-2 w-32 bg-white/10 rounded-full flex overflow-hidden">
-                     <motion.div initial={{ width: 0 }} animate={{ width: step === 1 ? "33%" : "66%" }} className="h-full bg-primary" />
+                     <motion.div initial={{ width: 0 }} animate={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }} className="h-full bg-primary" />
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -381,6 +385,54 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                   Submit Application <ArrowRight className="w-6 h-6" />
                 </button>
               </>
+            ) : (
+              <div className="text-center py-10">
+                <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(34,197,94,0.3)] animate-bounce font-bold text-4xl">
+                   <CheckCircle2 className="w-12 h-12" />
+                </div>
+                <h2 className="text-4xl font-black mb-4">Application Submitted!</h2>
+                <p className="text-slate-500 text-xl mb-12">
+                   Kindly check your email for confirmation. Your unique reference is <span className="text-[#020617] font-bold">#PC-67902</span>
+                </p>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-10 text-left mb-12 shadow-sm">
+                   <div className="grid md:grid-cols-2 gap-10">
+                      <div className="space-y-6">
+                         <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Owner Summary</h3>
+                         <div className="space-y-3">
+                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                               <span className="text-slate-400 text-sm">Full Name</span>
+                               <span className="font-bold text-slate-900">Tosin Akindele</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                               <span className="text-slate-400 text-sm">Phone</span>
+                               <span className="font-bold text-slate-900">+234 812 345 6789</span>
+                            </div>
+                         </div>
+                      </div>
+                      <div className="space-y-6">
+                         <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Car Summary</h3>
+                         <div className="space-y-3">
+                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                               <span className="text-slate-400 text-sm">Vehicle</span>
+                               <span className="font-bold text-slate-900">Mercedes G63 (2022)</span>
+                            </div>
+                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
+                               <span className="text-slate-400 text-sm">Plate No.</span>
+                               <span className="font-bold text-slate-900">LND-456-AA</span>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <button 
+                  onClick={onBack}
+                  className="px-12 py-5 bg-[#020617] text-white rounded-[2rem] font-bold flex items-center gap-3 mx-auto hover:scale-105 transition-transform"
+                >
+                  Return to Dashboard <ArrowRight className="w-5 h-5" />
+                </button>
+              </div>
             )}
           </motion.div>
         </div>
