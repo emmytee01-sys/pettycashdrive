@@ -15,13 +15,16 @@ import {
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { AdminDashboard } from "./AdminDashboard";
+import { AuthPage } from "./AuthPage";
+import { UserPortal } from "./UserPortal";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 // Components
-const Navbar = () => {
+const Navbar = ({ user }: { user: { role: string } | null }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -50,12 +53,33 @@ const Navbar = () => {
           <a href="#" className="hover:text-primary transition-colors">How It Works</a>
           <a href="#" className="hover:text-primary transition-colors">For Dealers</a>
           <a href="#" className="hover:text-primary transition-colors">About Us</a>
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('openForm'))}
-            className="px-5 py-2.5 bg-primary text-primary-foreground rounded-full hover:bg-primary-dark transition-all transform hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
-          >
-            Apply Now
-          </button>
+          
+          {user ? (
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-[10px] text-primary uppercase font-black">{user.role}</div>
+                <div className="text-xs text-white font-bold">Active Member</div>
+              </div>
+              <div className="w-10 h-10 rounded-full border border-primary/30 bg-primary/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-primary" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('openAuth'))}
+                className="px-5 py-2.5 bg-white/5 border border-white/10 text-white rounded-full hover:bg-white/10 transition-all font-bold"
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('openForm'))}
+                className="px-5 py-2.5 bg-primary text-primary-foreground rounded-full hover:bg-primary-dark transition-all transform hover:scale-105 active:scale-95 shadow-md shadow-primary/20"
+              >
+                Apply Now
+              </button>
+            </>
+          )}
         </div>
 
         <button 
@@ -428,21 +452,58 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
 };
 
 export default function App() {
-  const [showForm, setShowForm] = useState(false);
+  const [view, setView] = useState<'landing' | 'form' | 'dashboard' | 'auth' | 'user-portal'>('landing');
+  const [user, setUser] = useState<{ role: 'admin' | 'user' } | null>(null);
 
   useEffect(() => {
-    const handleOpenForm = () => setShowForm(true);
+    const handleOpenForm = () => setView('form');
+    const handleOpenDashboard = () => setView('dashboard');
+    const handleOpenAuth = () => setView('auth');
+    
     window.addEventListener('openForm', handleOpenForm);
-    return () => window.removeEventListener('openForm', handleOpenForm);
+    window.addEventListener('openDashboard', handleOpenDashboard);
+    window.addEventListener('openAuth', handleOpenAuth);
+    
+    return () => {
+      window.removeEventListener('openForm', handleOpenForm);
+      window.removeEventListener('openDashboard', handleOpenDashboard);
+      window.removeEventListener('openAuth', handleOpenAuth);
+    };
   }, []);
 
-  if (showForm) {
-    return <LoanForm onBack={() => setShowForm(false)} />;
+  const handleLogin = (role: 'admin' | 'user') => {
+    setUser({ role });
+    if (role === 'admin') {
+      setView('dashboard');
+    } else {
+      setView('user-portal');
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setView('landing');
+  };
+
+  if (view === 'auth') {
+    return <AuthPage onLogin={handleLogin} onBack={() => setView('landing')} />;
+  }
+
+  if (view === 'dashboard') {
+    return <AdminDashboard onBack={handleLogout} />;
+  }
+
+  if (view === 'user-portal') {
+    return <UserPortal onLogout={handleLogout} />;
+  }
+
+  if (view === 'form') {
+    return <LoanForm onBack={() => setView('landing')} />;
   }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white selection:bg-primary/30 scroll-smooth">
-      <Navbar />
+      <Navbar user={user} />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
@@ -459,15 +520,15 @@ export default function App() {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <div className="inline-flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-full text-sm font-semibold mb-6">
-              <Zap className="w-4 h-4" />
-              <span>Fast Cash within 24 Hours</span>
+              <Zap className="w-4 h-4 animate-pulse text-green-400" />
+              <span>Nigeria's #1 Car-Backed Loan Platform</span>
             </div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] mb-8">
-              Unlock Fast Cash with <br />
-              <span className="text-primary italic">Your Car.</span>
+            <h1 className="text-5xl lg:text-7xl font-extrabold leading-[1.1] mb-8 text-white">
+              Turn your car into <br />
+              <span className="text-primary italic">Fast Cash in Lagos.</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-10 leading-relaxed max-w-xl">
-              When you need it most, we make it simple. Apply in minutes, get approved fast, and receive funds within 24 hours.
+              From Ikeja to Abuja, we're helping Nigerians unlock liquidity from their cars in less than 24 hours. No stress, no bank wahala—just simple, fast loans.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
@@ -506,23 +567,60 @@ export default function App() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="relative"
           >
-            <div className="relative z-10 rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl glass p-2">
-              <img 
-                src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=1000" 
-                alt="Modern Car" 
-                className="w-full h-auto rounded-[1.8rem]"
-              />
-              <div className="absolute bottom-8 left-8 right-8 glass p-6 rounded-2xl border border-white/10 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Max Loan Amount</div>
-                  <div className="text-2xl font-bold font-mono">₦15,000,000+</div>
-                </div>
-                <div className="h-10 w-[1px] bg-white/10" />
-                <div>
-                  <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Interest Rate</div>
-                  <div className="text-2xl font-bold text-primary">From 3%</div>
-                </div>
-              </div>
+            {/* Animated Photo Stack */}
+            <div className="relative h-[500px] flex items-center justify-center">
+               <motion.div 
+                 initial={{ rotate: -10, x: -20, opacity: 0 }}
+                 animate={{ rotate: -6, x: 0, opacity: 1 }}
+                 transition={{ duration: 1, delay: 0.4 }}
+                 className="absolute w-[300px] aspect-[4/5] bg-card rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl z-0"
+               >
+                  <img src="/nigerian_woman.png" className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all opacity-40 hover:opacity-100" />
+               </motion.div>
+
+               <motion.div 
+                 initial={{ rotate: 10, x: 20, opacity: 0 }}
+                 animate={{ rotate: 6, x: 0, opacity: 1 }}
+                 transition={{ duration: 1, delay: 0.6 }}
+                 className="absolute w-[300px] aspect-[4/5] bg-card rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl z-20"
+               >
+                  <img src="/nigerian_man.png" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
+                     <div>
+                        <div className="text-[10px] text-primary font-black uppercase tracking-widest mb-1">Status</div>
+                        <div className="text-sm font-bold text-white">₦2,500,000 Disbursed</div>
+                     </div>
+                     <CheckCircle2 className="w-6 h-6 text-green-400" />
+                  </div>
+               </motion.div>
+
+               {/* Floating Success Badges */}
+               <motion.div 
+                 initial={{ x: 50, opacity: 0 }}
+                 animate={{ x: 0, opacity: 1 }}
+                 transition={{ duration: 0.5, delay: 1, repeat: Infinity, repeatType: 'reverse', repeatDelay: 5 }}
+                 className="absolute -right-10 top-20 z-30 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-2xl flex items-center gap-3 shadow-2xl"
+               >
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center font-bold">C</div>
+                  <div className="text-left">
+                     <div className="text-[10px] text-primary font-black uppercase">Chidi O.</div>
+                     <div className="text-xs font-bold text-white tracking-tight">Approved in 15 mins</div>
+                  </div>
+               </motion.div>
+
+               <motion.div 
+                 initial={{ x: -50, opacity: 0 }}
+                 animate={{ x: 0, opacity: 1 }}
+                 transition={{ duration: 0.5, delay: 1.5, repeat: Infinity, repeatType: 'reverse', repeatDelay: 4 }}
+                 className="absolute -left-16 bottom-20 z-30 bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-2xl flex items-center gap-3 shadow-2xl"
+               >
+                  <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xs uppercase tracking-tighter">I</div>
+                  <div className="text-left">
+                     <div className="text-[10px] text-primary font-black uppercase">Ibrahim S.</div>
+                     <div className="text-xs font-bold text-white tracking-tight">Got ₦5M for restock</div>
+                  </div>
+               </motion.div>
             </div>
             
             {/* Decortive elements */}
@@ -550,7 +648,7 @@ export default function App() {
             >
               <div className="aspect-[16/10] overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000" 
+                  src="/Gemini_Generated_Image_550gr5550gr5550g.png" 
                   alt="Car owner financing" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -577,7 +675,7 @@ export default function App() {
             >
               <div className="aspect-[16/10] overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?auto=format&fit=crop&q=80&w=1000" 
+                  src="/Gemini_Generated_Image_vj1xj3vj1xj3vj1x.png" 
                   alt="Car dealership" 
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
@@ -733,12 +831,13 @@ export default function App() {
                   <div className="w-full h-full bg-[#0f172a]/80 backdrop-blur-xl rounded-[2.8rem] p-8 flex flex-col">
                     <div className="flex-1 relative flex flex-col items-center justify-center">
                        {/* Inspection Visual */}
-                       <div className="flex -space-x-4 mb-10">
-                         {[1,2,3].map(i => (
-                           <div key={i} className="w-14 h-14 rounded-full border-4 border-[#0f172a] overflow-hidden shadow-2xl transform hover:z-10 hover:scale-110 transition-transform">
-                             <img src={`https://i.pravatar.cc/150?u=${i+10}`} className="w-full h-full object-cover" />
-                           </div>
-                         ))}
+                       <div className="flex -space-x-8 mb-10 relative">
+                         <div className="w-24 h-24 rounded-full border-4 border-[#0f172a] overflow-hidden shadow-2xl transform hover:z-10 hover:scale-110 transition-all rotate-3">
+                           <img src="/Gemini_Generated_Image_ln7ikbln7ikbln7i.png" className="w-full h-full object-cover" />
+                         </div>
+                         <div className="w-24 h-24 rounded-full border-4 border-[#0f172a] overflow-hidden shadow-2xl transform hover:z-10 hover:scale-110 transition-all -rotate-3 mt-4">
+                           <img src="/Gemini_Generated_Image_swz3yoswz3yoswz3.png" className="w-full h-full object-cover" />
+                         </div>
                        </div>
                        <div className="relative text-center">
                           <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
