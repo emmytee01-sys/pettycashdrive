@@ -532,7 +532,7 @@ export default function App() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => setShowForm(true)}
+                onClick={() => setView('form')}
                 className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary-dark transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
               >
                 Get Cash Now <ArrowRight className="w-5 h-5" />
