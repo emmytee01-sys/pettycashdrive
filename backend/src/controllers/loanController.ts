@@ -41,6 +41,16 @@ export const createLoan = async (req: Request, res: Response) => {
     try {
         await connection.beginTransaction();
 
+        // 0. Ensure user exists (especially for mock/demo IDs from frontend)
+        const [userExists] : any = await connection.execute('SELECT id FROM users WHERE id = ?', [user_id]);
+        if (userExists.length === 0) {
+            console.log(`User ${user_id} not found, creating a mock user record to satisfy foreign key...`);
+            await connection.execute(
+                'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
+                [user_id, 'Guest User', `guest_${user_id.substring(0,6)}@pettycash.com.ng`, 'mock_password', 'user']
+            );
+        }
+
         // 1. Create Loan Record
         const loanId = uuidv4();
         const loanReference = `PC-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
