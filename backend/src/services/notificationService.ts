@@ -1,17 +1,15 @@
 
-const TERMII_API_KEY = process.env.TERMII_API_KEY;
-const TERMII_BASE_URL = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
-const EMAIL_CONFIG_ID = process.env.TERMII_EMAIL_CONFIG_ID;
-const EMAIL_TEMPLATE_ID = process.env.TERMII_EMAIL_TEMPLATE_ID;
-const APP_RECEIVED_TEMPLATE_ID = process.env.TERMII_EMAIL_APP_RECEIVED_ID || EMAIL_TEMPLATE_ID;
-const DISBURSED_TEMPLATE_ID = process.env.TERMII_EMAIL_DISBURSED_ID || EMAIL_TEMPLATE_ID;
-const DECLINED_TEMPLATE_ID = process.env.TERMII_EMAIL_DECLINED_ID || EMAIL_TEMPLATE_ID;
+// Env variables will be accessed at runtime to ensure dotenv is fully loaded.
 
 export class NotificationService {
   /**
    * Send SMS notification
    */
   static async sendSMS(to: string, message: string) {
+    if (!to) {
+      console.error('sendSMS skipped: recipient phone is empty');
+      return;
+    }
     try {
       // Ensure phone is in international format for Nigeria (Termii requirement)
       let formattedPhone = to.trim();
@@ -24,10 +22,11 @@ export class NotificationService {
         from: "Paymyrent",
         sms: message,
         type: "plain",
-        api_key: TERMII_API_KEY,
+        api_key: process.env.TERMII_API_KEY,
         channel: "generic",
       };
 
+      const TERMII_BASE_URL = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
       const response = await fetch(`${TERMII_BASE_URL}/api/sms/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -46,16 +45,22 @@ export class NotificationService {
    * Send Email notification using template
    */
   static async sendEmail(email: string, subject: string, variables: Record<string, string>, specificTemplateId?: string) {
+    if (!email) {
+      console.error('sendEmail skipped: recipient email is empty');
+      return;
+    }
     try {
+      const targetTemplate = specificTemplateId || process.env.TERMII_EMAIL_TEMPLATE_ID;
       const data = {
-        template_id: specificTemplateId || EMAIL_TEMPLATE_ID,
-        email_configuration_id: EMAIL_CONFIG_ID,
-        api_key: TERMII_API_KEY,
+        template_id: targetTemplate,
+        email_configuration_id: process.env.TERMII_EMAIL_CONFIG_ID,
+        api_key: process.env.TERMII_API_KEY,
         email,
         subject,
         variables
       };
 
+      const TERMII_BASE_URL = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
       const response = await fetch(`${TERMII_BASE_URL}/api/templates/send-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -85,6 +90,7 @@ export class NotificationService {
         current_year: new Date().getFullYear().toString(),
         company_name: "PettyCash"
      };
+     const APP_RECEIVED_TEMPLATE_ID = process.env.TERMII_EMAIL_APP_RECEIVED_ID || process.env.TERMII_EMAIL_TEMPLATE_ID;
      await this.sendEmail(user.email, `Application Received: #${ref}`, emailVariables, APP_RECEIVED_TEMPLATE_ID);
   }
 
@@ -105,15 +111,14 @@ export class NotificationService {
        company_name: "PettyCash"
     };
 
-    // Use specific theme for Disbursement if available
-    let targetTemplate = EMAIL_TEMPLATE_ID;
+    let targetTemplate = process.env.TERMII_EMAIL_TEMPLATE_ID;
     let emailSubject = `Loan Application Update: #${ref}`;
 
     if (status === 'disbursed') {
-       targetTemplate = DISBURSED_TEMPLATE_ID;
+       targetTemplate = process.env.TERMII_EMAIL_DISBURSED_ID || process.env.TERMII_EMAIL_TEMPLATE_ID;
        emailSubject = `PettyCash Payment Alert: #${ref}`;
     } else if (status === 'rejected') {
-       targetTemplate = DECLINED_TEMPLATE_ID;
+       targetTemplate = process.env.TERMII_EMAIL_DECLINED_ID || process.env.TERMII_EMAIL_TEMPLATE_ID;
        emailSubject = `Update on your Loan Application: #${ref}`;
     }
 
@@ -153,7 +158,7 @@ export class NotificationService {
        current_year: new Date().getFullYear().toString(),
        company_name: "PettyCash"
     };
-    await this.sendEmail(user.email, `Welcome to PettyCash, ${user.name}!`, emailVariables, EMAIL_TEMPLATE_ID);
+    await this.sendEmail(user.email, `Welcome to PettyCash, ${user.name}!`, emailVariables, process.env.TERMII_EMAIL_TEMPLATE_ID);
   }
 
   /**
