@@ -140,6 +140,23 @@ export class NotificationService {
   }
 
   /**
+   * Notify user when account is created successfully
+   */
+  static async notifyAccountCreated(user: { name: string, email: string, phone: string }) {
+    const smsText = `Hi ${user.name}, welcome to PettyCash! Your account has been created successfully. Log in to start exploring our loan services.`;
+    await this.sendSMS(user.phone, smsText);
+
+    const emailVariables = {
+       name: user.name,
+       action: "Account Creation",
+       status: "SUCCESS",
+       current_year: new Date().getFullYear().toString(),
+       company_name: "PettyCash"
+    };
+    await this.sendEmail(user.email, `Welcome to PettyCash, ${user.name}!`, emailVariables, EMAIL_TEMPLATE_ID);
+  }
+
+  /**
    * Sample SMS Triggers (for dashboard reference):
    * 
    * 1. Application Received: 

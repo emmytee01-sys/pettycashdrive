@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
+import { NotificationService } from '../services/notificationService';
 
 export const register = async (req: Request, res: Response) => {
     const { name, email, password, phone, role } = req.body;
@@ -23,6 +24,13 @@ export const register = async (req: Request, res: Response) => {
             'INSERT INTO users (id, name, email, password, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, name || 'User', email, hashedPassword, phone || '', role || 'user']
         );
+
+        // Notify user about account creation
+        try {
+            await NotificationService.notifyAccountCreated({ name: name || 'User', email, phone: phone || '' });
+        } catch (noticeErr) {
+            console.error('Non-critical generic welcome notice error:', noticeErr);
+        }
 
         // Create Token
         const token = jwt.sign({ id: userId, role: role || 'user' }, process.env.JWT_SECRET || 'secret', { expiresIn: '7d' });
