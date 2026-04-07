@@ -11,7 +11,11 @@ import {
   ArrowRight,
   User,
   Star,
-  Zap
+  Zap,
+  FileText,
+  Plus,
+  Mail,
+  Lock
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -119,14 +123,126 @@ const StatCard: FC<{ value: string; label: string }> = ({ value, label }) => (
   </div>
 );
 
-const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
+// --- Data Constants ---
+const CAR_DATA: Record<string, string[]> = {
+  "Toyota": ["Camry", "Corolla", "Hilux", "Prado", "Venza", "Rav4", "Highlander"],
+  "Mercedes-Benz": ["C-Class", "E-Class", "G-Wagon", "GLK", "GLE", "ML"],
+  "Lexus": ["ES350", "RX350", "GX460", "LX570", "IS250"],
+  "Honda": ["Accord", "Civic", "CR-V", "Pilot"],
+  "Ford": ["Edge", "Explorer", "F-150", "Focus"],
+  "Hyundai": ["Elantra", "Sonata", "Tucson", "Santa Fe"],
+  "Kia": ["Rio", "Cerato", "Sportage", "Sorento"],
+};
+
+const STATES_IN_NIGERIA = [
+  "Lagos", "FCT - Abuja", "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", 
+  "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", 
+  "Katsina", "Kebbi", "Kogi", "Kwara", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", 
+  "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara"
+];
+
+const PROD_YEARS = Array.from({ length: 21 }, (_, i) => (new Date().getFullYear() - i).toString());
+
+const CAR_CONDITIONS = ["Mint Condition", "Good", "Fair", "Needs Repair"];
+
+const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }) => {
   const [step, setStep] = useState(1);
   const [agreed, setAgreed] = useState(false);
+  
+  // Selection State
+  const [make, setMake] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+  const [condition, setCondition] = useState("");
+  const [stateOfRes, setStateOfRes] = useState("");
+  
+  // New user/loan states
+  const [loanAmount, setLoanAmount] = useState("2500000"); // Default from UI
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [_, setSubmittedLoanId] = useState("");
+  const [alertModal, setAlertModal] = useState({ show: false, message: '', type: 'error' });
+
+  // File states
+  const [files, setFiles] = useState<{ [key: string]: File | null }>({
+    roadworthiness_certificate: null,
+    vehicle_license: null,
+    proof_of_ownership: null,
+    front_photo: null,
+    back_photo: null
+  });
+
+  const handleFileChange = (field: string, file: File | null) => {
+    setFiles(prev => ({ ...prev, [field]: file }));
+  };
+
+  const submitLoanApplication = async () => {
+    setLoading(true);
+    const formData = new FormData();
+    formData.append('user_id', userId || 'f1f2f3f4-e5e6-4e5e-8f9f-0a1b2c3d4e5f'); 
+    formData.append('amount', loanAmount);
+    formData.append('car_make', make);
+    formData.append('car_model', model);
+    formData.append('car_year', year);
+    formData.append('is_owner', 'true');
+    formData.append('state_of_res', stateOfRes);
+
+    // Append files
+    Object.entries(files).forEach(([key, file]) => {
+      if (file) formData.append(key, file);
+    });
+
+    try {
+      const res = await fetch('http://localhost:5001/api/loans', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSubmittedLoanId(data.loan_id);
+        setStep(4);
+      } else {
+        setAlertModal({ show: true, message: data.message || 'Submission failed', type: 'error' });
+      }
+    } catch (err) {
+      setAlertModal({ show: true, message: 'Could not connect to the backend server.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createAccount = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5001/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name: fullName, phone })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAlertModal({ show: true, message: 'Welcome! Your account is ready.', type: 'success' });
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      } else {
+        setAlertModal({ show: true, message: data.message || 'Registration failed', type: 'error' });
+      }
+    } catch (err) {
+      setAlertModal({ show: true, message: 'Could not connect to the server.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const steps = [
     { label: "Loan Details", icon: <CreditCard className="w-5 h-5" /> },
     { label: "Car Valuation", icon: <Car className="w-5 h-5" /> },
-    { label: "Indicative Offer", icon: <CheckCircle2 className="w-5 h-5" /> },
+    { label: "Upload Documents", icon: <FileText className="w-5 h-5" /> },
   ];
 
   return (
@@ -229,20 +345,34 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                     <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Personal Details</h3>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">What's your first name?</label>
-                        <input type="text" placeholder="Enter First Name" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">What's your last name?</label>
-                        <input type="text" placeholder="Enter Last Name" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        <label className="text-sm font-bold text-slate-700">What's your full name?</label>
+                        <input 
+                          type="text" 
+                          placeholder="Enter Full Name" 
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">What's your phone number?</label>
-                        <input type="tel" placeholder="Enter Phone Number" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        <input 
+                          type="tel" 
+                          placeholder="Enter Phone Number" 
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">What's your email address?</label>
-                        <input type="email" placeholder="Enter Email Address" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        <input 
+                          type="email" 
+                          placeholder="Enter Email Address" 
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
+                        />
                       </div>
                     </div>
                   </div>
@@ -254,7 +384,13 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                         <label className="text-sm font-bold text-slate-700">How much do you need?</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">NGN</span>
-                          <input type="number" placeholder="0" className="w-full p-4 pl-16 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                          <input 
+                            type="number" 
+                            placeholder="0" 
+                            value={loanAmount}
+                            onChange={(e) => setLoanAmount(e.target.value)}
+                            className="w-full p-4 pl-16 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
+                          />
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -313,29 +449,47 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">What make is your car?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select Car Make</option>
-                          <option>Toyota</option>
-                          <option>Mercedes-Benz</option>
-                          <option>Lexus</option>
+                        <select 
+                          value={make}
+                          onChange={(e) => { setMake(e.target.value); setModel(""); }}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="">Select Car Make</option>
+                          {Object.keys(CAR_DATA).sort().map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">Which model is your car?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select Car Model</option>
+                        <select 
+                          value={model}
+                          onChange={(e) => setModel(e.target.value)}
+                          disabled={!make}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none disabled:opacity-50"
+                        >
+                          <option value="">Select Car Model</option>
+                          {make && CAR_DATA[make].sort().map(mod => <option key={mod} value={mod}>{mod}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">When was your car produced?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select Production Year</option>
+                        <select 
+                          value={year}
+                          onChange={(e) => setYear(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="">Select Production Year</option>
+                          {PROD_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">What's the condition of your car?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select Car Condition</option>
+                        <select 
+                          value={condition}
+                          onChange={(e) => setCondition(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="">Select Car Condition</option>
+                          {CAR_CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                       
@@ -360,8 +514,13 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">Which state do you reside in?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select State Of Residence</option>
+                        <select 
+                          value={stateOfRes}
+                          onChange={(e) => setStateOfRes(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="">Select State Of Residence</option>
+                          {STATES_IN_NIGERIA.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       </div>
                       <div className="space-y-2">
@@ -392,72 +551,211 @@ const LoanForm: FC<{ onBack: () => void }> = ({ onBack }) => {
                   onClick={() => setStep(3)}
                   className="mt-12 w-full py-5 bg-[#020617] text-white rounded-[2rem] font-black text-xl hover:scale-[1.02] transition-all shadow-xl flex items-center justify-center gap-3"
                 >
-                  Submit Application <ArrowRight className="w-6 h-6" />
+                  Next Step <ArrowRight className="w-6 h-6" />
                 </button>
               </>
-            ) : (
-              <div className="text-center py-10">
-                <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(34,197,94,0.3)] animate-bounce font-bold text-4xl">
-                   <CheckCircle2 className="w-12 h-12" />
-                </div>
-                <h2 className="text-4xl font-black mb-4">Application Submitted!</h2>
-                <p className="text-slate-500 text-xl mb-12">
-                   Kindly check your email for confirmation. Your unique reference is <span className="text-[#020617] font-bold">#PC-67902</span>
-                </p>
+            ) : step === 3 ? (
+              <>
+                <h2 className="text-3xl font-black mb-4">Upload Documents</h2>
+                <p className="text-slate-500 mb-12">Kindly upload clear copies of your vehicle documents for verification.</p>
 
-                <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-10 text-left mb-12 shadow-sm">
-                   <div className="grid md:grid-cols-2 gap-10">
-                      <div className="space-y-6">
-                         <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Owner Summary</h3>
-                         <div className="space-y-3">
-                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
-                               <span className="text-slate-400 text-sm">Full Name</span>
-                               <span className="font-bold text-slate-900">Tosin Akindele</span>
-                            </div>
-                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
-                               <span className="text-slate-400 text-sm">Phone</span>
-                               <span className="font-bold text-slate-900">+234 812 345 6789</span>
-                            </div>
-                         </div>
-                      </div>
-                      <div className="space-y-6">
-                         <h3 className="font-black text-sm uppercase tracking-widest text-slate-400">Car Summary</h3>
-                         <div className="space-y-3">
-                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
-                               <span className="text-slate-400 text-sm">Vehicle</span>
-                               <span className="font-bold text-slate-900">Mercedes G63 (2022)</span>
-                            </div>
-                            <div className="flex justify-between border-b border-slate-200/50 pb-2">
-                               <span className="text-slate-400 text-sm">Plate No.</span>
-                               <span className="font-bold text-slate-900">LND-456-AA</span>
-                            </div>
-                         </div>
-                      </div>
-                   </div>
+                <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+                  <div className="space-y-6">
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Certificates & Licenses</h3>
+                    <div className="space-y-4">
+                      {["Roadworthiness Certificate", "Vehicle License", "Proof of Ownership"].map((label, i) => (
+                        <div key={i} className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{label}</label>
+                          <div className="relative group overflow-hidden bg-slate-50 border border-dashed border-slate-200 p-8 rounded-2xl flex flex-col items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
+                             <Plus className="w-6 h-6 text-slate-300 group-hover:text-primary mb-2 transition-transform group-hover:scale-110" />
+                             <span className="text-xs font-bold text-slate-400">
+                               {files[label.toLowerCase().replace(/ /g, '_')] ? files[label.toLowerCase().replace(/ /g, '_')]?.name : "Click to upload or drag & drop"}
+                             </span>
+                             <input 
+                               type="file" 
+                               className="absolute inset-0 opacity-0 cursor-pointer" 
+                               onChange={(e) => handleFileChange(label.toLowerCase().replace(/ /g, '_'), e.target.files?.[0] || null)}
+                             />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Vehicle Photos</h3>
+                    <div className="space-y-4">
+                      {["Front Photo", "Back Photo"].map((label, i) => (
+                        <div key={i} className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">{label}</label>
+                          <div className="relative group overflow-hidden bg-slate-50 border border-dashed border-slate-200 p-12 rounded-2xl flex flex-col items-center justify-center hover:border-primary/50 transition-colors cursor-pointer">
+                             <Plus className="w-8 h-8 text-slate-300 group-hover:text-primary mb-2 transition-transform group-hover:scale-110" />
+                             <span className="text-xs font-bold text-slate-400">
+                               {files[label.toLowerCase().replace(/ /g, '_')] ? files[label.toLowerCase().replace(/ /g, '_')]?.name : "Capture or upload photo"}
+                             </span>
+                             <input 
+                               type="file" 
+                               className="absolute inset-0 opacity-0 cursor-pointer" 
+                               onChange={(e) => handleFileChange(label.toLowerCase().replace(/ /g, '_'), e.target.files?.[0] || null)}
+                             />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <button 
-                  onClick={onBack}
-                  className="px-12 py-5 bg-[#020617] text-white rounded-[2rem] font-bold flex items-center gap-3 mx-auto hover:scale-105 transition-transform"
+                  disabled={loading}
+                  onClick={submitLoanApplication}
+                  className="mt-12 w-full py-5 bg-[#020617] text-white rounded-[2rem] font-black text-xl hover:scale-[1.02] transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
                 >
-                  Return to Dashboard <ArrowRight className="w-5 h-5" />
+                  {loading ? "Submitting..." : "Submit Application"} <ArrowRight className="w-6 h-6" />
+                </button>
+              </>
+            ) : (
+              <div className="text-center py-10 max-w-lg mx-auto">
+                <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(34,197,94,0.3)] animate-float font-bold text-4xl">
+                   <CheckCircle2 className="w-12 h-12" />
+                </div>
+                <h2 className="text-4xl font-black mb-4 text-slate-900">Final Step</h2>
+                <p className="text-slate-500 text-lg mb-10">
+                   Your loan request for <span className="text-[#020617] font-black underline decoration-primary decoration-4">₦{Number(loanAmount).toLocaleString()}</span> has been received! Create a password to access your dashboard.
+                </p>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8 text-left mb-10">
+                   <div className="flex items-center gap-4 mb-8">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                        <Mail className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1">
+                         <div className="text-[10px] text-slate-400 font-black uppercase">Email Address</div>
+                         <input 
+                           type="email" 
+                           placeholder="tosin@gmail.com" 
+                           value={email}
+                           onChange={(e) => setEmail(e.target.value)}
+                           className="w-full bg-transparent font-bold text-slate-700 focus:outline-none" 
+                         />
+                      </div>
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Create Password</label>
+                         <div className="relative group">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-colors" />
+                            <input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              className="w-full p-4 pl-12 bg-white border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all shadow-sm" 
+                            />
+                         </div>
+                       </div>
+                       <div className="space-y-2">
+                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest px-1">Confirm Password</label>
+                         <div className="relative group">
+                            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-colors" />
+                            <input 
+                              type="password" 
+                              placeholder="••••••••" 
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              className={cn(
+                                "w-full p-4 pl-12 bg-white border border-slate-100 rounded-2xl focus:ring-2 focus:outline-none transition-all shadow-sm",
+                                confirmPassword && password !== confirmPassword ? "focus:ring-red-500 border-red-100" : "focus:ring-primary"
+                              )}
+                            />
+                         </div>
+                       </div>
+                    </div>
+                </div>
+
+                <button 
+                  onClick={createAccount}
+                  disabled={loading || !password || !email || password !== confirmPassword}
+                  className="w-full py-5 bg-[#020617] text-white rounded-[2rem] font-bold flex items-center justify-center gap-3 hover:scale-105 transition-transform shadow-xl disabled:opacity-50"
+                >
+                  {loading ? "Creating..." : "Create My Account"} <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             )}
           </motion.div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      <AnimatePresence>
+        {alertModal.show && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setAlertModal(p => ({ ...p, show: false }))}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative overflow-hidden text-center"
+            >
+              <div className={cn(
+                "w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl",
+                alertModal.type === 'success' ? "bg-green-500 shadow-green-500/30" : "bg-red-500 shadow-red-500/30"
+              )}>
+                {alertModal.type === 'success' ? (
+                  <CheckCircle2 className="w-10 h-10 text-white" />
+                ) : (
+                  <Shield className="w-10 h-10 text-white" />
+                )}
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">
+                {alertModal.type === 'success' ? 'Success' : 'Error'}
+              </h3>
+              <p className="text-slate-600 mb-8 font-medium">
+                {alertModal.message}
+              </p>
+              <button
+                onClick={() => setAlertModal(p => ({ ...p, show: false }))}
+                className="w-full py-4 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+              >
+                Okay, got it
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'form' | 'dashboard' | 'auth' | 'user-portal'>('landing');
-  const [user, setUser] = useState<{ role: 'admin' | 'user' } | null>(null);
+  const [view, setView] = useState<'landing' | 'apply' | 'admin' | 'user' | 'auth'>('landing');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  // Persist session on mount
+  useEffect(() => {
+    const savedId = localStorage.getItem('pettycash_user_id');
+    const savedRole = localStorage.getItem('pettycash_role');
+    if (savedId && savedRole) {
+       setCurrentUserId(savedId);
+       setView(savedRole as any);
+    }
+  }, []);
+
+  const handleLogin = (data: { role: 'admin' | 'user', id: string }) => {
+    setCurrentUserId(data.id);
+    setView(data.role);
+    localStorage.setItem('pettycash_user_id', data.id);
+    localStorage.setItem('pettycash_role', data.role);
+  };
 
   useEffect(() => {
-    const handleOpenForm = () => setView('form');
-    const handleOpenDashboard = () => setView('dashboard');
+    const handleOpenForm = () => setView('apply');
+    const handleOpenDashboard = () => setView('admin');
     const handleOpenAuth = () => setView('auth');
     
     window.addEventListener('openForm', handleOpenForm);
@@ -471,39 +769,32 @@ export default function App() {
     };
   }, []);
 
-  const handleLogin = (role: 'admin' | 'user') => {
-    setUser({ role });
-    if (role === 'admin') {
-      setView('dashboard');
-    } else {
-      setView('user-portal');
-    }
-  };
-
   const handleLogout = () => {
-    setUser(null);
+    setCurrentUserId('');
     setView('landing');
+    localStorage.removeItem('pettycash_user_id');
+    localStorage.removeItem('pettycash_role');
   };
 
   if (view === 'auth') {
     return <AuthPage onLogin={handleLogin} onBack={() => setView('landing')} />;
   }
 
-  if (view === 'dashboard') {
+  if (view === 'admin') {
     return <AdminDashboard onBack={handleLogout} />;
   }
 
-  if (view === 'user-portal') {
-    return <UserPortal onLogout={handleLogout} />;
+  if (view === 'user') {
+    return <UserPortal onLogout={handleLogout} userId={currentUserId} />;
   }
 
-  if (view === 'form') {
-    return <LoanForm onBack={() => setView('landing')} />;
+  if (view === 'apply') {
+    return <LoanForm onBack={() => setView('landing')} userId={currentUserId} />;
   }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white selection:bg-primary/30 scroll-smooth">
-      <Navbar user={user} />
+      <Navbar user={false ? { role: view } : null} />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
@@ -532,11 +823,12 @@ export default function App() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
-                onClick={() => setView('form')}
+                onClick={() => setView('apply')}
                 className="px-8 py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary-dark transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
               >
                 Get Cash Now <ArrowRight className="w-5 h-5" />
               </button>
+
               <button className="px-8 py-4 bg-card border border-white/10 rounded-xl font-bold text-lg hover:bg-white/5 transition-all text-white flex items-center justify-center gap-2">
                 View Requirements
               </button>

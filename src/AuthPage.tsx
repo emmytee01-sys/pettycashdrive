@@ -11,7 +11,8 @@ import {
   User,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Phone
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -21,13 +22,16 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface AuthPageProps {
-  onLogin: (role: 'admin' | 'user') => void;
+  onLogin: (data: { role: 'admin' | 'user', id: string }) => void;
   onBack: () => void;
 }
 
 export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,28 +42,37 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
     setError(null);
     setIsLoading(true);
 
-    // Simulated Auth Logic
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Determine role based on email for simulation
-      if (email.includes('admin')) {
+    const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+    const body = mode === 'login' 
+      ? { email, password } 
+      : { email, password, name: fullName, phone };
+
+    try {
+      const res = await fetch(`http://localhost:5001${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
         setIsSuccess(true);
-        setTimeout(() => onLogin('admin'), 1500);
-      } else if (email.includes('@')) {
-        setIsSuccess(true);
-        setTimeout(() => onLogin('user'), 1500);
+        const user = data.user || data; // Handle different response shapes
+        setTimeout(() => onLogin({ role: user.role || 'user', id: user.id }), 1500);
       } else {
-        setError("Invalid email or password. Please try again.");
+        setError(data.message || "Something went wrong. Please try again.");
       }
-    }, 1500);
+    } catch (err) {
+      setError("Could not connect to the authentication server.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex overflow-hidden">
       {/* Left Branding Side */}
       <div className="hidden lg:flex w-1/2 relative flex-col justify-center p-20 overflow-hidden bg-gradient-to-br from-[#020617] to-[#0f172a]">
-        {/* Background Gradients */}
         <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
           <div className="absolute top-[-10%] right-[-10%] w-[80%] h-[80%] bg-primary rounded-full blur-[150px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-500 rounded-full blur-[120px]" />
@@ -83,7 +96,7 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
               <h1 className="text-4xl font-black tracking-tight">Petty<span className="text-primary italic">Cash</span></h1>
             </div>
             <h2 className="text-6xl font-black leading-tight">
-              Unlock your <br />
+              {mode === 'login' ? "Welcome Back to" : "Join the"} <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400">Financial Future.</span>
             </h2>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-lg">
@@ -106,14 +119,13 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
         </div>
       </div>
 
-      {/* Right Login Form Side */}
-      <div className="w-full lg:w-1/2 relative bg-white flex items-center justify-center p-8 md:p-20">
+      {/* Right Form Side */}
+      <div className="w-full lg:w-1/2 relative bg-white flex items-center justify-center p-8 md:p-20 overflow-y-auto">
         <motion.div 
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          className="w-full max-w-md space-y-12"
+          className="w-full max-w-md space-y-10 py-10"
         >
-          {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
              <div className="flex items-center gap-2">
                 <img src="/logo.png" alt="PettyCash" className="w-10 h-10 object-contain" />
@@ -122,17 +134,21 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
           </div>
 
           <div className="text-center lg:text-left space-y-4">
-            <h3 className="text-4xl font-black text-slate-900 tracking-tight">Welcome Back</h3>
-            <p className="text-slate-500 font-medium">Please enter your details to sign in.</p>
+            <h3 className="text-4xl font-black text-slate-900 tracking-tight">
+                {mode === 'login' ? "Welcome Back" : "Create Account"}
+            </h3>
+            <p className="text-slate-500 font-medium">
+                {mode === 'login' ? "Please enter your details to sign in." : "Get started with your PettyCash account today."}
+            </p>
           </div>
 
           <AnimatePresence mode="wait">
             {!isSuccess ? (
               <motion.form 
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                key={mode}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
                 onSubmit={handleSubmit} 
                 className="space-y-6"
               >
@@ -147,7 +163,40 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                   </motion.div>
                 )}
 
-                <div className="space-y-6">
+                <div className="space-y-5">
+                  {mode === 'register' && (
+                    <>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 tracking-wide uppercase px-1">Full Name</label>
+                            <div className="relative group">
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                            <input 
+                                required
+                                type="text" 
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                placeholder="Your Name" 
+                                className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-[1.2rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
+                            />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-700 tracking-wide uppercase px-1">Phone Number</label>
+                            <div className="relative group">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
+                            <input 
+                                required
+                                type="tel" 
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="080 1234 5678" 
+                                className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-[1.2rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
+                            />
+                            </div>
+                        </div>
+                    </>
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 tracking-wide uppercase px-1">Email Address</label>
                     <div className="relative group">
@@ -157,17 +206,16 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                          type="email" 
                          value={email}
                          onChange={(e) => setEmail(e.target.value)}
-                         placeholder="e.g. admin@pettycash.com" 
-                         className="w-full p-5 pl-12 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
+                         placeholder="name@example.com" 
+                         className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-[1.2rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
                        />
                     </div>
-                    <p className="text-[10px] text-slate-400 px-1 italic">Try "admin@pettycash.com" for admin dashboard.</p>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center px-1">
                       <label className="text-sm font-bold text-slate-700 tracking-wide uppercase">Password</label>
-                      <button type="button" className="text-xs font-bold text-primary hover:underline">Forgot Password?</button>
+                      {mode === 'login' && <button type="button" className="text-xs font-bold text-primary hover:underline">Forgot?</button>}
                     </div>
                     <div className="relative group">
                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-colors" />
@@ -177,7 +225,7 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                          value={password}
                          onChange={(e) => setPassword(e.target.value)}
                          placeholder="••••••••" 
-                         className="w-full p-5 pl-12 pr-12 bg-slate-50 border border-slate-100 rounded-[1.5rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
+                         className="w-full p-4 pl-12 pr-12 bg-slate-50 border border-slate-100 rounded-[1.2rem] focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-slate-300 font-medium text-slate-900" 
                        />
                        <button 
                          type="button"
@@ -190,15 +238,10 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 px-1">
-                   <input type="checkbox" id="remember" className="w-5 h-5 accent-primary rounded-md border-slate-200" />
-                   <label htmlFor="remember" className="text-sm font-bold text-slate-500 cursor-pointer select-none">Remember this device</label>
-                </div>
-
                 <button 
                   disabled={isLoading}
                   className={cn(
-                    "w-full py-5 rounded-[2rem] font-black text-xl transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95",
+                    "w-full py-4 rounded-[1.5rem] font-black text-lg transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95",
                     isLoading ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-[#020617] text-white hover:bg-slate-900"
                   )}
                 >
@@ -206,16 +249,23 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                     <motion.div 
                       animate={{ rotate: 360 }} 
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-6 h-6 border-4 border-slate-300 border-t-primary rounded-full shadow-inner" 
+                      className="w-6 h-6 border-4 border-slate-300 border-t-primary rounded-full" 
                     />
                   ) : (
-                    <>Sign In Now <ArrowRight className="w-6 h-6" /></>
+                    <>{mode === 'login' ? 'Sign In Now' : 'Create Account'} <ArrowRight className="w-6 h-6" /></>
                   )}
                 </button>
 
-                <div className="text-center pt-4">
+                <div className="text-center pt-2">
                   <p className="text-slate-500 font-medium">
-                    Don't have an account? <button type="button" className="text-primary font-bold hover:underline">Get started today</button>
+                    {mode === 'login' ? "Don't have an account?" : "Already have an account?"}{" "}
+                    <button 
+                        type="button" 
+                        onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+                        className="text-primary font-bold hover:underline"
+                    >
+                        {mode === 'login' ? 'Get started today' : 'Sign in here'}
+                    </button>
                   </p>
                 </div>
               </motion.form>
@@ -226,37 +276,30 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="text-center py-10"
               >
-                <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl animate-bounce">
-                  <CheckCircle2 className="w-12 h-12" />
+                <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-2xl animate-bounce">
+                  <CheckCircle2 className="w-10 h-10" />
                 </div>
-                <h2 className="text-4xl font-black text-slate-900 mb-4">Success!</h2>
-                <p className="text-slate-500 text-lg">Authenticating your profile, please wait...</p>
-                <div className="mt-8 flex justify-center gap-2">
-                   <motion.div animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1 }} className="w-3 h-3 bg-primary rounded-full" />
-                   <motion.div animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-3 h-3 bg-primary rounded-full" />
-                   <motion.div animate={{ opacity: [0,1,0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-3 h-3 bg-primary rounded-full" />
-                </div>
+                <h2 className="text-3xl font-black text-slate-900 mb-2">Success!</h2>
+                <p className="text-slate-500">Authenticating your profile...</p>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Quick Role Select (Optional, for demo) */}
-          <div className="pt-12 border-t border-slate-100">
-             <p className="text-center text-[10px] uppercase tracking-widest font-black text-slate-300 mb-6">Quick Role Access</p>
+          <div className="pt-8 border-t border-slate-100">
              <div className="flex gap-4">
                 <button 
-                  onClick={() => onLogin('admin')}
-                  className="flex-1 flex items-center justify-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                  onClick={() => onLogin({ role: 'admin', id: 'admin-seed-id' })}
+                  className="flex-1 flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
                 >
-                   <ShieldCheck className="w-5 h-5 text-slate-400 group-hover:text-primary" />
-                   <span className="text-xs font-bold text-slate-600 group-hover:text-primary">Admin Portal</span>
+                   <ShieldCheck className="w-6 h-6 text-slate-400 group-hover:text-primary" />
+                   <span className="text-[10px] font-black text-slate-400 group-hover:text-primary uppercase tracking-tighter">Demo Admin</span>
                 </button>
                 <button 
-                  onClick={() => onLogin('user')}
-                  className="flex-1 flex items-center justify-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
+                  onClick={() => onLogin({ role: 'user', id: 'tosin-001-uuid-999-888' })}
+                  className="flex-1 flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
                 >
-                   <User className="w-5 h-5 text-slate-400 group-hover:text-primary" />
-                   <span className="text-xs font-bold text-slate-600 group-hover:text-primary">User Portal</span>
+                   <User className="w-6 h-6 text-slate-400 group-hover:text-primary" />
+                   <span className="text-[10px] font-black text-slate-400 group-hover:text-primary uppercase tracking-tighter">Demo User</span>
                 </button>
              </div>
           </div>

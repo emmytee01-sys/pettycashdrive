@@ -1,26 +1,24 @@
-import { useState, type FC } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, type FC } from "react";
 import { 
-  LayoutDashboard, 
+  Zap, 
   Users, 
-  FileText, 
+  BarChart3, 
+  LayoutDashboard, 
   Settings, 
-  Search, 
-  Bell, 
-  MoreVertical,
-  ArrowUpRight,
-  ArrowDownRight,
+  LogOut, 
+  ShieldCheck, 
+  AlertCircle,
+  FileText,
   DollarSign,
   TrendingUp,
-  ShieldCheck,
+  Clock,
   ChevronRight,
-  LogOut,
-  Plus,
-  Filter,
+  X,
+  
   Download,
-  CheckCircle2,
-  AlertCircle
+  ArrowRight
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -28,146 +26,300 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// --- Mock Data ---
-const STATS = [
-  { label: "Total Users", value: "12,842", change: "+12.5%", trend: "up", icon: <Users className="w-5 h-5" /> },
-  { label: "Active Loans", value: "842", change: "+5.2%", trend: "up", icon: <FileText className="w-5 h-5" /> },
-  { label: "Total Disbursed", value: "₦458.2M", change: "+8.1%", trend: "up", icon: <DollarSign className="w-5 h-5" /> },
-  { label: "Default Rate", value: "2.4%", change: "-0.5%", trend: "down", icon: <AlertCircle className="w-5 h-5" /> },
-];
-
-const RECENT_LOANS = [
-  { id: "#PC-9021", user: "Tosin Akindele", amount: "₦1,200,000", date: "2 mins ago", status: "Approved", car: "Toyota Camry 2022" },
-  { id: "#PC-9022", user: "Chioma Okereke", amount: "₦4,500,000", date: "15 mins ago", status: "Pending", car: "Mercedes G63" },
-  { id: "#PC-9023", user: "Musa Ibrahim", amount: "₦850,000", date: "1 hour ago", status: "Disbursed", car: "Lexus ES350" },
-  { id: "#PC-9024", user: "Faith Adebayo", amount: "₦2,100,000", date: "3 hours ago", status: "Rejected", car: "Honda Accord 2018" },
-  { id: "#PC-9025", user: "John Doe", amount: "₦500,000", date: "5 hours ago", status: "Approved", car: "Toyota Corolla 2015" },
-];
-
-// --- Components ---
-
-const SidebarItem = ({ icon, label, active, onClick }: { icon: any, label: string, active?: boolean, onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className={cn(
-      "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group",
-      active 
-        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
-        : "text-muted-foreground hover:bg-white/5 hover:text-white"
-    )}
-  >
-    <div className={cn("transition-transform duration-300 group-hover:scale-110", active ? "text-primary-foreground" : "text-primary")}>
-      {icon}
-    </div>
-    <span className="font-semibold text-sm tracking-wide">{label}</span>
-    {active && (
-      <motion.div 
-        layoutId="active-pill"
-        className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-foreground"
-      />
-    )}
-  </button>
-);
-
-const StatCard = ({ label, value, change, trend, icon }: any) => (
-  <motion.div 
-    whileHover={{ y: -5 }}
-    className="bg-card/40 backdrop-blur-md border border-white/5 p-6 rounded-3xl relative overflow-hidden group"
-  >
-    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-      {icon}
-    </div>
-    <div className="flex justify-between items-start mb-4">
-      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-        {icon}
-      </div>
-      <div className={cn(
-        "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
-        trend === "up" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
-      )}>
-        {trend === "up" ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-        {change}
-      </div>
-    </div>
-    <div>
-      <h3 className="text-muted-foreground text-sm font-medium mb-1">{label}</h3>
-      <div className="text-2xl font-black text-white">{value}</div>
-    </div>
-  </motion.div>
-);
-
-const Header = () => (
-  <header className="h-20 border-b border-white/5 px-8 flex items-center justify-between bg-background/50 backdrop-blur-md sticky top-0 z-30">
-    <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-4 py-2 rounded-2xl w-96 group focus-within:ring-2 focus-within:ring-primary transition-all">
-      <Search className="w-4 h-4 text-muted-foreground" />
-      <input 
-        type="text" 
-        placeholder="Search users, loans, or transactions..." 
-        className="bg-transparent border-none outline-none text-sm w-full text-white placeholder:text-muted-foreground"
-      />
-    </div>
-
-    <div className="flex items-center gap-6">
-      <button className="relative w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-        <Bell className="w-5 h-5 text-muted-foreground" />
-        <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
-      </button>
-      
-      <div className="h-8 w-[1px] bg-white/10" />
-      
-      <div className="flex items-center gap-3">
-        <div className="text-right hidden sm:block">
-          <div className="text-sm font-bold text-white leading-none mb-1">Admin User</div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Super Admin</div>
+const StatCard: FC<{ label: string, value: string, icon: any, color: string, trend?: string }> = ({ label, value, icon: Icon, color, trend }) => (
+  <div className="bg-card/40 backdrop-blur-md border border-white/5 p-8 rounded-[2.5rem] relative overflow-hidden group hover:border-primary/20 transition-all duration-500">
+    <div className={cn("absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-10 group-hover:opacity-20 transition-opacity", color)} />
+    <div className="relative z-10">
+      <div className="flex items-center justify-between mb-6">
+        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
+          <Icon className="w-6 h-6 text-primary" />
         </div>
-        <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center overflow-hidden">
-          <img src="https://i.pravatar.cc/150?u=admin" className="w-full h-full object-cover" />
-        </div>
+        {trend && (
+          <span className="text-[10px] font-black px-3 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-full tracking-widest uppercase">
+            {trend}
+          </span>
+        )}
+      </div>
+      <div>
+        <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-2">{label}</div>
+        <div className="text-3xl font-black text-white tracking-tight">{value}</div>
       </div>
     </div>
-  </header>
+  </div>
 );
 
-const SectionTitle = ({ title, subtitle, action }: { title: string, subtitle: string, action?: any }) => (
-  <div className="flex items-center justify-between mb-8">
+const SectionTitle: FC<{ title: string, subtitle: string, action?: any }> = ({ title, subtitle, action }) => (
+  <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
     <div>
-      <h2 className="text-2xl font-black text-white">{title}</h2>
-      <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>
+       <h2 className="text-5xl font-black tracking-tight mb-4 leading-none">{title}</h2>
+       <p className="text-muted-foreground font-medium text-lg">{subtitle}</p>
     </div>
     {action}
   </div>
 );
 
-const StatusBadge = ({ status }: { status: string }) => {
+const SidebarItem: FC<{ icon: any, label: string, active: boolean, onClick: () => void }> = ({ icon, label, active, onClick }) => (
+  <button 
+    onClick={onClick}
+    className={cn(
+      "w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 group relative",
+      active ? "bg-primary text-primary-foreground shadow-xl shadow-primary/20" : "text-slate-400 hover:bg-white/5 hover:text-white"
+    )}
+  >
+    <div className={cn("transition-transform duration-300 group-hover:scale-110", active ? "scale-100" : "")}>{icon}</div>
+    <span className="font-bold tracking-wide text-sm">{label}</span>
+    {active && (
+      <motion.div layoutId="sidebar-accent" className="absolute left-0 w-1 h-6 bg-white rounded-full translate-x-[-2px]" />
+    )}
+  </button>
+);
+
+const StatusBadge: FC<{ status: string }> = ({ status }) => {
   const styles: any = {
-    Approved: "bg-green-500/10 text-green-400 border-green-500/20",
-    Pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
-    Disbursed: "bg-primary/10 text-primary border-primary/20",
-    Rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+    pending: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    approved: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    rejected: "bg-red-500/10 text-red-500 border-red-500/20",
+    disbursed: "bg-green-500/10 text-green-500 border-green-500/20"
   };
-  
   return (
-    <span className={cn("px-3 py-1 rounded-full text-xs font-bold border", styles[status])}>
+    <span className={cn("px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border", styles[status] || styles.pending)}>
       {status}
     </span>
   );
 };
 
+const Header = ({ showNotifications, setShowNotifications, notifications, setNotifications }: any) => (
+  <header className="p-8 flex items-center justify-between border-b border-white/5 sticky top-0 bg-[#020617]/80 backdrop-blur-xl z-40">
+    <div className="flex items-center gap-6">
+       <div className="h-10 w-[1px] bg-white/10 hidden md:block" />
+       <div className="flex flex-col">
+          <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Institutional Dashboard</span>
+          <span className="text-white/40 text-[10px] font-bold">Node: Lagos-NGA-01</span>
+       </div>
+    </div>
+    
+    <div className="flex items-center gap-6">
+       <button 
+         onClick={() => setShowNotifications(!showNotifications)}
+         className="relative p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group"
+       >
+          <Zap className={cn("w-5 h-5", notifications.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground")} />
+          {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#020617]" />}
+          
+          <AnimatePresence>
+             {showNotifications && (
+                <motion.div 
+                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                   animate={{ opacity: 1, y: 0, scale: 1 }}
+                   exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                   className="absolute right-0 mt-4 w-80 bg-[#0f172a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl z-[100]"
+                >
+                   <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-black text-sm uppercase tracking-widest text-white">System Alerts</h3>
+                      <button onClick={() => setNotifications([])} className="text-[10px] font-bold text-primary hover:underline">Dismiss All</button>
+                   </div>
+                   <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                      {notifications.length > 0 ? notifications.map((n: any) => (
+                        <div key={n.id} className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-primary/20 transition-all cursor-default text-left">
+                           <div className="font-bold text-xs mb-1 text-white">{n.title}</div>
+                           <div className="text-[10px] text-muted-foreground">{n.text}</div>
+                           <div className="text-[8px] font-black uppercase text-primary mt-2">{n.time}</div>
+                        </div>
+                      )) : (
+                        <div className="text-center py-10 text-muted-foreground text-xs italic">No system alerts.</div>
+                      )}
+                   </div>
+                </motion.div>
+             )}
+          </AnimatePresence>
+       </button>
+
+       <div className="flex flex-col items-end">
+          <span className="text-sm font-black uppercase tracking-wider text-white">System Admin</span>
+          <span className="text-[10px] font-bold text-green-400 flex items-center gap-1.5 uppercase tracking-widest">
+            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" /> Live Service
+          </span>
+       </div>
+       <div className="w-12 h-12 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg shadow-primary/20 cursor-pointer hover:rotate-6 transition-transform">
+          <Users className="w-6 h-6 text-white" />
+       </div>
+    </div>
+  </header>
+);
+
+
 export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState("Dashboard");
+  const [_1, setLastFetchTime] = useState<string>(new Date().toLocaleTimeString());
+  const [loans, setLoans] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [_2, setLoading] = useState(true);
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [loanViewMode, setLoanViewMode] = useState<'list' | 'detail'>('list');
+  const [selectedDoc, setSelectedDoc] = useState<any>(null);
+  const [showLiveFeed, setShowLiveFeed] = useState(false);
+  const [modal, setModal] = useState<{ show: boolean, title: string, message: string, type: 'confirm' | 'success' | 'error', onConfirm?: () => void }>({
+    show: false, title: '', message: '', type: 'success'
+  });
+  const [notifications, setNotifications] = useState<any[]>([
+    { id: 1, title: 'Network Hub Sync', text: 'Institutional data node connected successfully.', time: 'Live', type: 'info' }
+  ]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [_3, setAuditLogs] = useState<any[]>([]);
+
+  const fetchAuditLogs = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/admin/audit-logs');
+      const data = await res.json();
+      setAuditLogs(data);
+    } catch (err) {
+      console.error("Failed to fetch audit logs:", err);
+    }
+  };
+
+  const fetchLoans = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/admin/loans');
+      const data = await res.json();
+      setLoans(data);
+    } catch (err) {
+      console.error("Failed to fetch admin loans:", err);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/admin/users');
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error("Failed to fetch admin users:", err);
+    }
+  };
+
+  useEffect(() => {
+    const loadAll = async () => {
+       setLoading(true);
+       await Promise.all([fetchLoans(), fetchUsers(), fetchAuditLogs()]);
+       setLoading(false);
+       setLastFetchTime(new Date().toLocaleTimeString());
+    };
+    loadAll();
+  }, []);
+
+  useEffect(() => {
+    let newNotifications: any[] = [];
+    
+    const auditLogList = _3.length > 0 ? _3 : [];
+    
+    // Check for pending loans
+    const pendingLoans = loans.filter(l => l.status === 'pending');
+    if (pendingLoans.length > 0) {
+      newNotifications.push({
+        id: 'pending_loans',
+        title: 'Pending Applications',
+        text: `There are ${pendingLoans.length} loan applications awaiting review.`,
+        time: 'Just now',
+        type: 'warning'
+      });
+    }
+
+    // Recent activity highlights
+    if (auditLogList && auditLogList.length > 0) {
+      const recentLog = auditLogList[0];
+      newNotifications.push({
+        id: 'recent_audit',
+        title: 'Recent Audit Activity',
+        text: `Action: ${recentLog.action.replace('_', ' ').toUpperCase()} on Loan ${recentLog.loan_id.substring(0, 8)}`,
+        time: new Date(recentLog.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        type: 'info'
+      });
+    }
+
+    if (newNotifications.length === 0) {
+      newNotifications = [{ id: 1, title: 'Network Hub Sync', text: 'Institutional data node connected successfully.', time: 'Live', type: 'info' }];
+    }
+
+    setNotifications(newNotifications);
+  }, [loans, _3]);
+
+
+
+  const handleUpdateStatus = async (loanId: string, status: string, notes?: string) => {
+     try {
+       const res = await fetch(`http://localhost:5001/api/admin/loans/${loanId}/status`, {
+         method: 'PATCH',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ status, notes })
+       });
+       if (res.ok) {
+         fetchLoans();
+         setSelectedLoan(null);
+         setShowRejectModal(false);
+         setRejectionReason("");
+         setLoanViewMode('list');
+       }
+     } catch (err) {
+       console.error("Update failed:", err);
+     }
+  };
+
+  const exportToCSV = () => {
+    if (loans.length === 0) return;
+    const headers = ["Loan ID", "Borrower", "Email", "Vehicle", "Amount", "Status", "Date"];
+    const rows = loans.map(l => [
+      l.loan_reference,
+      l.user_name,
+      l.user_email,
+      `${l.make} ${l.model} (${l.year})`,
+      l.amount,
+      l.status,
+      new Date(l.created_at).toLocaleDateString()
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers, ...rows].map(e => e.join(",")).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `PettyCash_Loans_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Dynamic Dashboard Stats
+  const formatCompact = (num: number) => {
+     if (num >= 1000000) return `₦${(num / 1000000).toFixed(1)}M`;
+     if (num >= 1000) return `₦${(num / 1000).toFixed(1)}K`;
+     return `₦${num}`;
+  };
+
+  const totalDisbursed = loans.filter(l => l.status === 'disbursed').reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalPending = loans.filter(l => l.status === 'pending').length;
+  const totalCapital = loans.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+
+  const dynamicStats = [
+    { label: "Active Capital", value: formatCompact(totalCapital), icon: DollarSign, color: "bg-primary", trend: "Live" },
+    { label: "Processing", value: totalPending.toString(), icon: Clock, color: "bg-amber-400", trend: "Urgent" },
+    { label: "Disbursed Total", value: formatCompact(totalDisbursed), icon: TrendingUp, color: "bg-green-400", trend: "Success" },
+    { label: "Platform Users", value: users.length.toString(), icon: Users, color: "bg-blue-400", trend: "Active" }
+  ];
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex">
       {/* Sidebar */}
       <aside className="w-72 border-r border-white/5 flex flex-col fixed h-screen bg-[#020617] z-50">
         <div className="p-8 border-b border-white/5">
-          <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setActiveTab("Dashboard")}>
             <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30 group-hover:bg-primary/30 transition-all">
-              <img src="/logo.png" alt="PettyCash" className="w-6 h-6 object-contain" />
+               <Zap className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <span className="font-black text-xl tracking-tight">Petty<span className="text-primary">Cash</span></span>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">Admin Portal</div>
+              <span className="font-black text-xl tracking-tight">Petty<span className="text-primary italic">Cash</span></span>
             </div>
           </div>
         </div>
@@ -180,26 +332,26 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
             onClick={() => setActiveTab("Dashboard")} 
           />
           <SidebarItem 
-            icon={<Users className="w-5 h-5" />} 
-            label="Manage Users" 
-            active={activeTab === "Users"} 
-            onClick={() => setActiveTab("Users")} 
-          />
-          <SidebarItem 
-            icon={<FileText className="w-5 h-5" />} 
-            label="Loan Applications" 
+            icon={<ShieldCheck className="w-5 h-5" />} 
+            label="Loan Requests" 
             active={activeTab === "Loans"} 
             onClick={() => setActiveTab("Loans")} 
           />
           <SidebarItem 
-            icon={<TrendingUp className="w-5 h-5" />} 
+            icon={<Users className="w-5 h-5" />} 
+            label="User Accounts" 
+            active={activeTab === "Users"} 
+            onClick={() => setActiveTab("Users")} 
+          />
+          <SidebarItem 
+            icon={<BarChart3 className="w-5 h-5" />} 
             label="Financial Reports" 
             active={activeTab === "Reports"} 
             onClick={() => setActiveTab("Reports")} 
           />
           <SidebarItem 
-            icon={<ShieldCheck className="w-5 h-5" />} 
-            label="Operations" 
+            icon={<BarChart3 className="w-5 h-5 rotate-90" />} 
+            label="Audit Logs" 
             active={activeTab === "Operations"} 
             onClick={() => setActiveTab("Operations")} 
           />
@@ -212,19 +364,13 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
             active={activeTab === "Settings"} 
             onClick={() => setActiveTab("Settings")} 
           />
-          <div className="pt-4">
-             <button 
-               onClick={onBack}
-               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-blue-400 hover:bg-blue-500/5 group"
-             >
-                <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-semibold text-sm">Back to Website</span>
-             </button>
-          </div>
         </nav>
 
         <div className="p-6 border-t border-white/5">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/5 group">
+          <button 
+            onClick={onBack}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-400 hover:bg-red-500/5 group"
+          >
             <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="font-semibold text-sm">Sign Out Admin</span>
           </button>
@@ -233,7 +379,12 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
 
       {/* Main Content */}
       <main className="flex-1 ml-72">
-        <Header />
+        <Header 
+          showNotifications={showNotifications} 
+          setShowNotifications={setShowNotifications}
+          notifications={notifications}
+          setNotifications={setNotifications}
+        />
 
         <div className="p-8 max-w-7xl mx-auto">
           <AnimatePresence mode="wait">
@@ -250,60 +401,51 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                   subtitle="Real-time performance metrics of your lending platform."
                   action={
                     <div className="flex items-center gap-3">
-                       <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-bold hover:bg-white/10 grayscale transition-all">
-                         <Download className="w-4 h-4" /> Export
+                       <button 
+                         onClick={exportToCSV}
+                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                       >
+                         <Download className="w-4 h-4" /> Export Data
                        </button>
-                       <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20">
-                         <Plus className="w-4 h-4" /> New Loan
-                       </button>
+                       <button onClick={() => setShowLiveFeed(true)} className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary/20 transition-all flex items-center gap-2">Live Feed <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" /></button>
                     </div>
                   }
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {STATS.map((stat, i) => (
+                  {dynamicStats.map((stat, i) => (
                     <StatCard key={i} {...stat} />
                   ))}
                 </div>
 
                 <div className="grid lg:grid-cols-3 gap-8">
-                  {/* Recent Applications */}
                   <div className="lg:col-span-2 bg-card/40 backdrop-blur-md border border-white/5 rounded-3xl overflow-hidden">
                     <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                       <h3 className="text-lg font-bold">Recent Loan Applications</h3>
-                       <button className="text-primary text-xs font-bold hover:underline flex items-center gap-1">
-                          View All <ChevronRight className="w-3 h-3" />
+                       <h3 className="text-lg font-bold">Recent Applications</h3>
+                       <button onClick={() => setActiveTab("Loans")} className="text-primary text-xs font-bold hover:underline flex items-center gap-1">
+                          Manage All <ChevronRight className="w-3 h-3" />
                        </button>
                     </div>
                     <div className="p-0 overflow-x-auto">
                       <table className="w-full text-left">
                         <thead>
                           <tr className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest border-b border-white/5">
-                            <th className="px-6 py-4">ID</th>
-                            <th className="px-6 py-4">Applicant</th>
-                            <th className="px-6 py-4">Car Model</th>
-                            <th className="px-6 py-4">Loan Amount</th>
+                            <th className="px-6 py-4">Ref</th>
+                            <th className="px-6 py-4">User</th>
+                            <th className="px-6 py-4">Car</th>
+                            <th className="px-6 py-4">Amount</th>
                             <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
-                          {RECENT_LOANS.map((loan, i) => (
-                            <tr key={i} className="hover:bg-white/5 transition-colors group">
-                              <td className="px-6 py-4 text-xs font-mono font-bold text-muted-foreground">{loan.id}</td>
-                              <td className="px-6 py-4">
-                                <div className="text-sm font-bold">{loan.user}</div>
-                                <div className="text-[10px] text-muted-foreground">{loan.date}</div>
-                              </td>
-                              <td className="px-6 py-4 text-sm text-slate-300 font-medium">{loan.car}</td>
-                              <td className="px-6 py-4 text-sm font-black">{loan.amount}</td>
+                          {loans.slice(0, 5).map((loan) => (
+                            <tr key={loan.id} className="hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4 text-xs font-mono font-bold text-muted-foreground">#{loan.loan_reference}</td>
+                              <td className="px-6 py-4 text-sm font-bold">{loan.user_name}</td>
+                              <td className="px-6 py-4 text-sm text-slate-300">{loan.make} {loan.model}</td>
+                              <td className="px-6 py-4 text-sm font-black text-white">₦{Number(loan.amount).toLocaleString()}</td>
                               <td className="px-6 py-4">
                                 <StatusBadge status={loan.status} />
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <button className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
-                                  <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                                </button>
                               </td>
                             </tr>
                           ))}
@@ -312,49 +454,24 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                     </div>
                   </div>
 
-                  {/* Analytics Summary */}
                   <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-3xl p-6">
-                    <h3 className="text-lg font-bold mb-6">Volume Distribution</h3>
-                    <div className="space-y-8">
-                       <div className="relative">
-                          <div className="flex justify-between text-sm mb-2 font-bold">
-                             <span className="text-slate-400">Personal Loans</span>
-                             <span>65%</span>
-                          </div>
-                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                             <motion.div initial={{ width: 0 }} animate={{ width: "65%" }} className="h-full bg-primary" />
-                          </div>
-                       </div>
-                       <div className="relative">
-                          <div className="flex justify-between text-sm mb-2 font-bold">
-                             <span className="text-slate-400">Dealer Financing</span>
-                             <span>25%</span>
-                          </div>
-                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                             <motion.div initial={{ width: 0 }} animate={{ width: "25%" }} className="h-full bg-blue-500" />
-                          </div>
-                       </div>
-                       <div className="relative">
-                          <div className="flex justify-between text-sm mb-2 font-bold">
-                             <span className="text-slate-400">Business Expansion</span>
-                             <span>10%</span>
-                          </div>
-                          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                             <motion.div initial={{ width: 0 }} animate={{ width: "10%" }} className="h-full bg-purple-500" />
-                          </div>
-                       </div>
-
-                       <div className="pt-8 border-t border-white/5">
-                          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
-                             <div className="flex items-center gap-3 mb-2">
-                                <TrendingUp className="w-4 h-4 text-primary" />
-                                <span className="text-sm font-bold text-primary">System Health</span>
-                             </div>
-                             <p className="text-xs text-muted-foreground leading-relaxed">
-                                All automated valuation models are running at 99.8% precision with no latency issues detected.
-                             </p>
-                          </div>
-                       </div>
+                    <h3 className="text-lg font-bold mb-6">Risk Index</h3>
+                    <div className="space-y-6">
+                       {[
+                         { label: 'Low Risk Approvals', val: 78, color: 'primary' },
+                         { label: 'High Exposure', val: 12, color: 'red-500' },
+                         { label: 'Under Verification', val: 10, color: 'blue-400' }
+                       ].map((r, i) => (
+                         <div key={i}>
+                            <div className="flex justify-between text-[10px] uppercase font-black tracking-widest mb-2">
+                               <span className="text-muted-foreground">{r.label}</span>
+                               <span className="text-white">{r.val}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                               <div className={cn("h-full", `bg-${r.color}`)} style={{ width: `${r.val}%` }} />
+                            </div>
+                         </div>
+                       ))}
                     </div>
                   </div>
                 </div>
@@ -367,108 +484,526 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
               >
-                <SectionTitle 
-                  title="User Management" 
-                  subtitle="Manage and view all registered car owners and dealers." 
-                  action={
-                    <div className="flex items-center gap-2">
-                       <button className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm font-bold">
-                          <Filter className="w-4 h-4" /> Filters
-                       </button>
-                    </div>
-                  }
-                />
-                
-                <div className="bg-card/40 border border-white/5 rounded-3xl p-12 text-center">
-                   <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <Users className="w-10 h-10 text-primary" />
-                   </div>
-                   <h3 className="text-xl font-bold mb-2">Detailed User List</h3>
-                   <p className="text-muted-foreground max-w-sm mx-auto mb-8">This module allows you to see activity, document verification status, and credit scoring for all users.</p>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {[1,2,3].map(i => (
-                        <div key={i} className="p-6 bg-white/5 rounded-2xl text-left border border-white/10">
-                           <div className="flex items-center gap-4 mb-4">
-                              <img src={`https://i.pravatar.cc/150?u=${i+20}`} className="w-12 h-12 rounded-xl" />
+                <SectionTitle title="User Registry" subtitle="Manage all car owners and stakeholders on the platform." />
+                <div className="bg-card/40 border border-white/5 rounded-[2.5rem] overflow-hidden">
+                   <table className="w-full text-left">
+                      <thead>
+                        <tr className="text-muted-foreground text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                           <th className="px-8 py-5">Profile</th>
+                           <th className="px-8 py-5">Joined</th>
+                           <th className="px-8 py-5">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {users.map(u => (
+                          <tr key={u.id} className="hover:bg-white/5">
+                             <td className="px-8 py-5">
+                                <div className="text-sm font-bold">{u.name}</div>
+                                <div className="text-xs text-muted-foreground">{u.email}</div>
+                             </td>
+                             <td className="px-8 py-5 text-sm text-slate-400">{new Date(u.created_at).toLocaleDateString()}</td>
+                             <td className="px-8 py-5">
+                                <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase">{u.role}</span>
+                             </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                   </table>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === "Loans" && (
+              <motion.div key="loans">
+                {loanViewMode === 'list' ? (
+                  <div className="space-y-8">
+                     <SectionTitle title="Loan Applications" subtitle="Review and disburse pending loan requests." />
+                     <div className="bg-card/40 border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                        <table className="w-full text-left">
+                          <thead>
+                             <tr className="text-muted-foreground text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                                <th className="px-8 py-5">Ref</th>
+                                <th className="px-8 py-5">Applicant</th>
+                                <th className="px-8 py-5">Amount</th>
+                                <th className="px-8 py-5">Status</th>
+                                <th className="px-8 py-5 text-right">Action</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                             {loans.map(loan => (
+                               <tr key={loan.id} className="hover:bg-white/5">
+                                  <td className="px-8 py-5 text-xs font-mono font-bold text-primary">#{loan.loan_reference}</td>
+                                  <td className="px-8 py-5 text-sm font-bold">{loan.user_name}</td>
+                                  <td className="px-8 py-5 text-sm font-black">₦{Number(loan.amount).toLocaleString()}</td>
+                                  <td className="px-8 py-5"><StatusBadge status={loan.status} /></td>
+                                  <td className="px-8 py-5 text-right">
+                                     <button 
+                                        onClick={() => { setSelectedLoan(loan); setLoanViewMode('detail'); }}
+                                        className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                                     >
+                                        Inspect
+                                     </button>
+                                  </td>
+                               </tr>
+                             ))}
+                          </tbody>
+                        </table>
+                     </div>
+                  </div>
+                ) : selectedLoan && (
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                     <button onClick={() => setLoanViewMode('list')} className="flex items-center gap-2 text-white/40 hover:text-white text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+                        <ChevronRight className="w-4 h-4 rotate-180" /> Back to List
+                     </button>
+                     
+                     <div className="flex flex-col lg:flex-row gap-10">
+                        <div className="flex-1 bg-card/40 border border-white/5 rounded-[3rem] p-12">
+                           <div className="flex justify-between items-start mb-10">
                               <div>
-                                 <div className="font-bold">Member #{i+100}</div>
-                                 <div className="text-[10px] text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</div>
+                                 <h2 className="text-4xl font-black">{selectedLoan.user_name}</h2>
+                                 <p className="text-muted-foreground mt-2">{selectedLoan.user_email}</p>
+                              </div>
+                              <StatusBadge status={selectedLoan.status} />
+                           </div>
+
+                           <div className="grid md:grid-cols-2 gap-10">
+                              <div>
+                                 <div className="text-[10px] font-black uppercase text-primary tracking-widest mb-4">Loan Details</div>
+                                 <div className="space-y-4">
+                                     <div className="p-5 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="text-[10px] text-muted-foreground uppercase mb-1">Principal</div>
+                                        <div className="text-2xl font-black">₦{Number(selectedLoan.amount).toLocaleString()}</div>
+                                     </div>
+                                     <div className="p-5 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="text-[10px] text-muted-foreground uppercase mb-1">Tenure</div>
+                                        <div className="text-2xl font-black">{selectedLoan.tenure} Months</div>
+                                     </div>
+                                 </div>
+                              </div>
+                              <div>
+                                 <div className="text-[10px] font-black uppercase text-primary tracking-widest mb-4">Vehicle Data</div>
+                                 <div className="space-y-4">
+                                     <div className="p-5 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="text-[10px] text-muted-foreground uppercase mb-1">Vehicle</div>
+                                        <div className="text-2xl font-black">{selectedLoan.make} {selectedLoan.model}</div>
+                                     </div>
+                                     <div className="p-5 bg-primary/10 rounded-2xl border border-primary/20">
+                                        <div className="text-[10px] text-primary/60 uppercase mb-1">Estimated Value</div>
+                                        <div className="text-2xl font-black text-primary">₦{(selectedLoan.valuation || selectedLoan.amount * 1.5).toLocaleString()}</div>
+                                     </div>
+                                 </div>
                               </div>
                            </div>
-                           <div className="space-y-1">
-                              <div className="text-[10px] text-muted-foreground uppercase opacity-50">Last Login</div>
-                              <div className="text-xs font-medium">Today at 10:45 AM</div>
+
+                           <div className="mt-12">
+                              <div className="text-[10px] font-black uppercase text-primary tracking-widest mb-6 flex items-center gap-2">
+                                 <FileText className="w-4 h-4" /> Supporting Documents
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                                 {selectedLoan.documents && selectedLoan.documents.length > 0 ? (
+                                    selectedLoan.documents.map((doc: any) => (
+                                       <button 
+                                          key={doc.id}
+                                          onClick={() => setSelectedDoc(doc)}
+                                          className="group relative flex flex-col bg-white/5 border border-white/5 rounded-[2rem] p-6 hover:bg-white/10 hover:border-primary/30 transition-all text-left overflow-hidden"
+                                       >
+                                          <div className="absolute top-0 right-0 w-16 h-16 bg-primary/10 rounded-bl-3xl translate-x-4 -translate-y-4 group-hover:translate-x-0 group-hover:translate-y-0 transition-transform" />
+                                          <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary mb-4 group-hover:scale-110 transition-transform">
+                                             <FileText className="w-5 h-5" />
+                                          </div>
+                                          <div className="text-xs font-black uppercase tracking-tight mb-1 truncate pr-8">{doc.type.replace(/_/g, ' ')}</div>
+                                          <div className="text-[10px] text-muted-foreground font-bold">Verified Capture</div>
+                                          
+                                          <div className="mt-4 flex items-center gap-1.5 text-primary text-[10px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity">
+                                             Click to View <ArrowRight className="w-3 h-3" />
+                                          </div>
+                                       </button>
+                                    ))
+                                 ) : (
+                                    <div className="col-span-full py-16 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem] flex flex-col items-center justify-center text-muted-foreground italic font-medium">
+                                       <AlertCircle className="w-8 h-8 mb-4 opacity-20" />
+                                       No documentation uploaded for this request
+                                    </div>
+                                 )}
+                              </div>
                            </div>
                         </div>
-                      ))}
-                   </div>
-                </div>
+
+                        <div className="w-full lg:w-96 space-y-6">
+                           <div className="bg-primary/5 border border-primary/20 rounded-[3rem] p-10">
+                              <h3 className="text-xl font-black mb-6">Management Panel</h3>
+                              <div className="space-y-4">
+                                 {selectedLoan.status === 'approved' && (
+                                   <button 
+                                     onClick={() => handleUpdateStatus(selectedLoan.id, 'disbursed')}
+                                     className="w-full py-5 bg-green-500 text-white rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-green-500/20 flex items-center justify-center gap-3 animate-pulse"
+                                   >
+                                     <Zap className="w-5 h-5 fill-current" /> Disburse Funds
+                                   </button>
+                                 )}
+                                 {selectedLoan.status === 'pending' && (
+                                   <button onClick={() => handleUpdateStatus(selectedLoan.id, 'approved')} className="w-full py-5 bg-primary text-primary-foreground rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3">
+                                      <ShieldCheck className="w-5 h-5" /> Approve Loan
+                                   </button>
+                                 )}
+                                 {selectedLoan.status === 'approved' && (
+                                   <button onClick={() => handleUpdateStatus(selectedLoan.id, 'pending')} className="w-full py-5 bg-white/5 text-white border border-white/10 rounded-2xl font-black text-sm hover:bg-white/10 transition-all">
+                                      Revoke to Review
+                                   </button>
+                                 )}
+                                 <button onClick={() => setShowRejectModal(true)} className="w-full py-5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl font-black text-sm hover:bg-red-500 hover:text-white transition-all">
+                                    Decline Request
+                                 </button>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
+            {activeTab === "Reports" && (
+              <motion.div key="reports" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+                 <SectionTitle title="Financial Health" subtitle="Aggregated platform performance and sustainability metrics." />
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8">
+                       <div className="text-xs font-black text-primary uppercase tracking-widest mb-4">Portfolio Value</div>
+                       <div className="text-4xl font-black mb-4">₦1.2B</div>
+                       <div className="text-xs font-bold text-green-400">+18% vs Last Month</div>
+                    </div>
+                    <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8 text-blue-400">
+                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Active Yield</div>
+                       <div className="text-4xl font-black mb-4 text-white">₦84M</div>
+                       <div className="text-xs font-bold opacity-100">Projected Annual</div>
+                    </div>
+                    <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8 text-red-400">
+                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Overdue Risk</div>
+                       <div className="text-4xl font-black mb-4 text-white">4.2%</div>
+                       <div className="text-xs font-bold text-red-500">Under Control</div>
+                    </div>
+                 </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                     <div className="bg-card/40 border border-white/5 rounded-[3rem] p-10 h-[400px] flex flex-col justify-between">
+                        <div>
+                           <h3 className="text-xl font-bold mb-1">Growth Index</h3>
+                           <p className="text-xs text-muted-foreground">Institutional capital deployment velocity (30d).</p>
+                        </div>
+                        <div className="flex-1 flex items-end gap-3 mt-10">
+                           {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
+                             <motion.div 
+                               key={i}
+                               initial={{ height: 0 }}
+                               animate={{ height: `${h}%` }}
+                               className="flex-1 bg-gradient-to-t from-primary to-blue-600 rounded-t-xl opacity-80 hover:opacity-100 transition-opacity"
+                             />
+                           ))}
+                        </div>
+                     </div>
+                     <div className="bg-card/40 border border-white/5 rounded-[3rem] p-10 h-[400px]">
+                        <h3 className="text-xl font-bold mb-6">Distribution</h3>
+                        <div className="flex items-center justify-center h-full">
+                           <div className="relative w-48 h-48 rounded-full border-[10px] border-white/5 flex items-center justify-center">
+                              <div className="absolute inset-0 rounded-full border-[10px] border-primary border-t-transparent border-r-transparent rotate-45" />
+                              <div className="text-center">
+                                 <div className="text-2xl font-black">74%</div>
+                                 <div className="text-[10px] uppercase font-bold text-muted-foreground">Efficiency</div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+              </motion.div>
+            )}
+
+            {activeTab === "Operations" && (
+              <motion.div key="ops" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
+                 <SectionTitle title="System Logs" subtitle="Internal event monitoring and audit trails." />
+                 <div className="bg-card/40 border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                   <table className="w-full text-left">
+                      <thead>
+                        <tr className="text-muted-foreground text-[10px] uppercase font-black tracking-widest border-b border-white/5">
+                           <th className="px-8 py-5">Event</th>
+                           <th className="px-8 py-5">Actor</th>
+                           <th className="px-8 py-5">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                         <tr className="hover:bg-white/5">
+                            <td className="px-8 py-5"><div className="text-sm font-bold">DB_MIGRATE: Missing Columns</div></td>
+                            <td className="px-8 py-5 text-xs text-muted-foreground">PettyCash AI Agent</td>
+                            <td className="px-8 py-5"><span className="text-[10px] font-black text-green-400 uppercase">Success</span></td>
+                         </tr>
+                      </tbody>
+                   </table>
+                 </div>
               </motion.div>
             )}
 
             {activeTab === "Settings" && (
-              <motion.div
-                key="settings"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="max-w-4xl"
-              >
-                <SectionTitle title="Platform Settings" subtitle="Configure system parameters, interest rates, and loan limits." />
-                
-                <div className="space-y-6">
-                   <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-lg font-bold mb-8 flex items-center gap-3">
-                         <DollarSign className="w-5 h-5 text-primary" /> Financial Controls
-                      </h3>
-                      
-                      <div className="grid md:grid-cols-2 gap-8">
-                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-400">Base Interest Rate (%)</label>
-                            <input type="text" defaultValue="3.5" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
-                         </div>
-                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-400">Max Loan Duration (Months)</label>
-                            <input type="text" defaultValue="24" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
-                         </div>
-                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-400">Min. Car Value (₦)</label>
-                            <input type="text" defaultValue="1,500,000" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
-                         </div>
-                         <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-400">Loan-to-Value Ratio (%)</label>
-                            <input type="text" defaultValue="70" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
-                         </div>
-                      </div>
-                      
-                      <button className="mt-10 px-8 py-4 bg-primary text-primary-foreground rounded-2xl font-bold hover:scale-105 transition-all shadow-xl shadow-primary/10">
-                         Save Changes
-                      </button>
-                   </div>
-
-                   <div className="bg-card/40 backdrop-blur-md border border-white/5 rounded-3xl p-8">
-                      <h3 className="text-lg font-bold mb-4 flex items-center gap-3">
-                         <ShieldCheck className="w-5 h-5 text-primary" /> Risk Management
-                      </h3>
-                      <p className="text-sm text-muted-foreground mb-8">Adjust the sensitivity of the automated risk scoring system.</p>
-                      
-                      <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-2xl mb-4">
-                         <div>
-                            <div className="font-bold">Automated Approvals</div>
-                            <div className="text-[10px] text-muted-foreground">Approve low-risk loans instantly without human review</div>
-                         </div>
-                         <div className="w-12 h-6 bg-primary rounded-full relative cursor-pointer">
-                            <div className="absolute right-1 top-1 w-4 h-4 bg-primary-foreground rounded-full" />
-                         </div>
-                      </div>
-                   </div>
-                </div>
+              <motion.div key="settings" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl space-y-10">
+                 <SectionTitle title="Platform Settings" subtitle="Configure system-wide parameters and loan logic." />
+                 <div className="bg-card/40 border border-white/5 rounded-3xl p-10">
+                    <h3 className="text-xl font-bold mb-8">Loan Engine Constraints</h3>
+                    <div className="grid md:grid-cols-2 gap-8">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Base Interest Rate (%)</label>
+                          <input type="text" defaultValue="3.5" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-bold text-muted-foreground uppercase">Manual Review Threshold (₦)</label>
+                          <input type="text" defaultValue="5,000,000" className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-primary" />
+                       </div>
+                    </div>
+                    <button className="mt-10 px-10 py-5 bg-primary text-primary-foreground rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20">Apply Platform Rules</button>
+                 </div>
               </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {showRejectModal && (
+              <div className="fixed inset-0 z-[120] flex items-center justify-center p-8">
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowRejectModal(false)} className="absolute inset-0 bg-[#020617]/90 backdrop-blur-md" />
+                 <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="w-full max-w-md bg-card border border-white/10 rounded-[3rem] p-12 relative z-10 shadow-2xl">
+                    <h3 className="text-3xl font-black mb-4 leading-tight">Decline <br />Application</h3>
+                    <p className="text-sm text-muted-foreground mb-8 leading-relaxed">Provide a clear justification. This explanation will be visible in the user's rejection dashboard.</p>
+                    <textarea 
+                      value={rejectionReason} 
+                      onChange={(e) => setRejectionReason(e.target.value)} 
+                      placeholder="e.g. Asset valuation below minimum threshold..." 
+                      className="w-full h-32 p-6 bg-white/5 border border-white/10 rounded-2xl text-white outline-none focus:ring-2 focus:ring-red-500/50 transition-all" 
+                    />
+                    <div className="flex gap-4 mt-8">
+                       <button onClick={() => setShowRejectModal(false)} className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold">Cancel</button>
+                       <button disabled={!rejectionReason.trim()} onClick={() => handleUpdateStatus(selectedLoan.id, 'rejected', rejectionReason)} className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl shadow-xl shadow-red-500/20">Decline User</button>
+                    </div>
+                 </motion.div>
+              </div>
+            )}
+
+            {selectedDoc && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-8 lg:p-20">
+                 <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    exit={{ opacity: 0 }} 
+                    onClick={() => setSelectedDoc(null)} 
+                    className="absolute inset-0 bg-[#020617]/95 backdrop-blur-xl" 
+                 />
+                 <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+                    animate={{ opacity: 1, scale: 1, y: 0 }} 
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+                    className="w-full max-w-5xl aspect-[4/3] lg:aspect-auto lg:h-full bg-slate-900 border border-white/10 rounded-[3rem] overflow-hidden relative z-10 shadow-2xl flex flex-col"
+                 >
+                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20">
+                       <div>
+                          <div className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Document Preview</div>
+                          <h3 className="text-xl font-bold uppercase tracking-tight">{selectedDoc.type.replace(/_/g, ' ')}</h3>
+                       </div>
+                       <button 
+                          onClick={() => setSelectedDoc(null)}
+                          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"
+                       >
+                          <X className="w-6 h-6" />
+                       </button>
+                    </div>
+
+                    <div className="flex-1 bg-black p-4 lg:p-8 flex items-center justify-center overflow-auto">
+                       {selectedDoc.url.toLowerCase().endsWith('.pdf') ? (
+                          <iframe 
+                             src={`http://localhost:5001${selectedDoc.url}`} 
+                             className="w-full h-full rounded-2xl border-none"
+                             title="PDF Viewer"
+                          />
+                       ) : (
+                          <img 
+                             src={`http://localhost:5001${selectedDoc.url}`} 
+                             alt="Document" 
+                             className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+                             onError={(e) => {
+                                (e.target as any).src = 'https://placehold.co/600x400/020617/primary?text=Preview+Unavailable';
+                             }}
+                          />
+                       )}
+                    </div>
+                    
+                    <div className="p-8 bg-black/40 border-t border-white/5 flex items-center justify-center gap-4">
+                       <a 
+                          href={`http://localhost:5001${selectedDoc.url}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                       >
+                          <Download className="w-4 h-4" /> Open Original
+                       </a>
+                    </div>
+                 </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Action Modal */}
+      <AnimatePresence>
+        {modal.show && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" 
+              onClick={() => setModal({ ...modal, show: false })}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0f172a] border border-white/10 rounded-[3rem] p-10 z-[210] shadow-2xl"
+            >
+               <div className="flex flex-col items-center text-center">
+                  <div className={cn(
+                    "w-20 h-20 rounded-full flex items-center justify-center mb-8 border-2 shadow-xl",
+                    modal.type === 'success' ? "bg-green-500/10 border-green-500/20 text-green-500" :
+                    modal.type === 'error' ? "bg-red-500/10 border-red-500/20 text-red-500" :
+                    "bg-primary/10 border-primary/20 text-primary"
+                  )}>
+                     {modal.type === 'success' ? <ShieldCheck className="w-10 h-10" /> : 
+                      modal.type === 'error' ? <AlertCircle className="w-10 h-10" /> : 
+                      <Zap className="w-10 h-10" />}
+                  </div>
+                  <h3 className="text-3xl font-black mb-4">{modal.title}</h3>
+                  <p className="text-slate-400 font-medium leading-relaxed mb-10">{modal.message}</p>
+                  
+                  <div className="flex gap-4 w-full">
+                     {modal.type === 'confirm' ? (
+                       <>
+                         <button 
+                           onClick={() => setModal({ ...modal, show: false })}
+                           className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-sm hover:bg-white/10 transition-all"
+                         >
+                            Cancel
+                         </button>
+                         <button 
+                           onClick={() => { modal.onConfirm?.(); setModal({ ...modal, show: false }); }}
+                           className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                         >
+                            Confirm
+                         </button>
+                       </>
+                     ) : (
+                       <button 
+                         onClick={() => setModal({ ...modal, show: false })}
+                         className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                       >
+                          Close
+                       </button>
+                     )}
+                  </div>
+               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Document Viewer Modal */}
+      <AnimatePresence>
+        {selectedDoc && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-black/90 backdrop-blur-xl z-[300]" 
+              onClick={() => setSelectedDoc(null)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-10 z-[310] flex flex-col items-center justify-center pointer-events-none"
+            >
+               <div className="relative w-full max-w-4xl max-h-full bg-[#0f172a] border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl pointer-events-auto">
+                  <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-10">
+                     <div>
+                        <h3 className="text-2xl font-black text-white">{selectedDoc.type.split('_').map((w:string) => w[0].toUpperCase() + w.slice(1)).join(' ')}</h3>
+                        <p className="text-xs text-muted-foreground font-bold tracking-widest uppercase mt-1">Official Verification Document</p>
+                     </div>
+                     <button 
+                        onClick={() => setSelectedDoc(null)}
+                        className="p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all font-black text-xs flex items-center gap-2"
+                     >
+                        <X className="w-4 h-4" /> CLOSE VIEWER
+                     </button>
+                  </div>
+                  <div className="p-10 overflow-auto flex justify-center bg-black/20">
+                     <img 
+                       src={selectedDoc.url.startsWith('http') ? selectedDoc.url : `http://localhost:5001${selectedDoc.url}`} 
+                       className="max-w-full h-auto rounded-2xl shadow-2xl border border-white/5" 
+                       alt="Verification Document" 
+                     />
+                  </div>
+                  <div className="p-8 border-t border-white/5 bg-[#0f172a]/80 backdrop-blur-md flex justify-end gap-4">
+                     <a 
+                       href={selectedDoc.url.startsWith('http') ? selectedDoc.url : `http://localhost:5001${selectedDoc.url}`} 
+                       download
+                       className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-sm hover:bg-white/10 transition-all flex items-center gap-2"
+                     >
+                        <Download className="w-4 h-4" /> Download Original
+                     </a>
+                  </div>
+               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Live Feed Sidebar */}
+      <AnimatePresence>
+        {showLiveFeed && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => setShowLiveFeed(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+            />
+            <motion.div
+              initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#020617]/95 backdrop-blur-xl border-l border-white/10 z-[70] flex flex-col shadow-2xl"
+            >
+               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+                  <h3 className="font-black text-lg flex items-center gap-3">
+                     <div className="w-2 h-2 bg-green-500 rounded-full animate-ping" /> System Live Feed
+                  </h3>
+                  <button onClick={() => setShowLiveFeed(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                     <X className="w-5 h-5 text-muted-foreground" />
+                  </button>
+               </div>
+               <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {loans.slice(0, 10).map((l, i) => (
+                    <div key={i} className="flex gap-4 group">
+                       <div className="flex flex-col items-center">
+                          <div className={cn("w-2 h-2 rounded-full mt-2 ring-4 ring-[#020617]", l.status === 'disbursed' ? "bg-green-500" : l.status === 'approved' ? "bg-blue-500" : "bg-primary")} />
+                          {i !== 9 && <div className="w-[1px] h-full bg-white/5 mt-2 group-hover:bg-primary/20 transition-colors" />}
+                       </div>
+                       <div className="flex-1 bg-white/5 p-4 rounded-2xl border border-white/5 group-hover:border-primary/20 transition-all hover:-translate-y-1">
+                          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">{new Date(l.created_at).toLocaleTimeString()}</div>
+                          <div className="text-sm font-bold">{l.user_name}</div>
+                          <div className="text-xs text-slate-400 mt-1">
+                             {l.status === 'disbursed' ? `Asset funded: ₦${Number(l.amount).toLocaleString()}` :
+                              l.status === 'approved' ? `Passed verification protocols.` :
+                              `New application submitted for ${l.make} ${l.model}.`}
+                          </div>
+                       </div>
+                    </div>
+                  ))}
+               </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
