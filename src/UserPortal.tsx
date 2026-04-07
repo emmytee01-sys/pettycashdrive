@@ -222,12 +222,14 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
            </div>
            
            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group"
-              >
-                 <Zap className={cn("w-5 h-5", notifications.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground")} />
-                 {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#020617]" />}
+              <div className="relative">
+                 <button 
+                   onClick={() => setShowNotifications(!showNotifications)}
+                   className="relative p-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group"
+                 >
+                    <Zap className={cn("w-5 h-5", notifications.length > 0 ? "text-primary fill-primary/20" : "text-muted-foreground")} />
+                    {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#020617]" />}
+                 </button>
                  
                  <AnimatePresence>
                     {showNotifications && (
@@ -255,7 +257,7 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                        </motion.div>
                     )}
                  </AnimatePresence>
-              </button>
+              </div>
 
               <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2">
                  <div className={cn("w-2 h-2 rounded-full", userStatus === 'pending' ? "bg-yellow-400 animate-pulse" : userStatus === 'rejected' ? "bg-red-400" : "bg-green-400")} />
