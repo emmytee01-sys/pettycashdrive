@@ -79,11 +79,11 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
 
   const fetchUserData = async () => {
     try {
-      const res = await fetch(`http://localhost:5001/api/loans/user/${userId}`);
+      const res = await fetch(`/api/loans/user/${userId}`);
       const loans = await res.json();
       
       if (loans && Array.isArray(loans) && loans.length > 0) {
-         const loanRes = await fetch(`http://localhost:5001/api/loans/${loans[0].id}`);
+         const loanRes = await fetch(`/api/loans/${loans[0].id}`);
          const fullData = await loanRes.json();
          setData(fullData);
       }
@@ -96,6 +96,8 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
 
   useEffect(() => {
     fetchUserData();
+    const interval = setInterval(fetchUserData, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
   }, [userId]);
 
   if (loading) {
@@ -132,7 +134,7 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
       type: 'confirm',
       onConfirm: async () => {
         try {
-            const res = await fetch(`http://localhost:5001/api/loans/${data.id}/payment`, {
+            const res = await fetch(`/api/loans/${data.id}/payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: monthlyRepayment, method: "Instant Card Transfer" })
@@ -336,17 +338,30 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                        <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                           <div>
                              <div className="text-[10px] font-black text-muted-foreground uppercase mb-1">Requested Amount</div>
-                             <div className="text-lg font-black text-white">{loanAmount}</div>
+                             <div className="text-lg font-black text-white">{loanAmount !== "₦0" ? loanAmount : "Pending Valuation"}</div>
                           </div>
                           <div className="text-right">
                              <div className="text-[10px] font-black text-muted-foreground uppercase mb-1">Proposed Tenure</div>
-                             <div className="text-lg font-black text-white">{data?.tenure || 12} Months</div>
+                             <div className="text-lg font-black text-white">{data?.tenure ? `${data.tenure} Months` : "12 Months"}</div>
                           </div>
                        </div>
                        <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
                           <div>
                              <div className="text-[10px] font-black text-muted-foreground uppercase mb-1">Vehicle Details</div>
-                             <div className="text-lg font-black text-white">{carInfo.make} {carInfo.model} ({carInfo.year})</div>
+                             <div className="text-lg font-black text-white">
+                                {data ? `${carInfo.make} ${carInfo.model} (${carInfo.year})` : "Vehicle Details Pending"}
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="text-[10px] font-black text-muted-foreground uppercase mb-1">Status</div>
+                             <div className={cn(
+                               "text-[10px] font-black uppercase px-2 py-0.5 rounded-full",
+                               userStatus === 'pending' ? "bg-yellow-500/20 text-yellow-500" :
+                               userStatus === 'approved' ? "bg-green-500/20 text-green-500" :
+                               "bg-red-500/20 text-red-500"
+                             )}>
+                                {userStatus}
+                             </div>
                           </div>
                        </div>
                     </div>

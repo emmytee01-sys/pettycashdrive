@@ -66,3 +66,15 @@ CREATE TABLE IF NOT EXISTS payments (
     payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
 );
+
+-- Audit Logs Table
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id CHAR(36) PRIMARY KEY,
+    admin_id CHAR(36) NOT NULL,
+    loan_id CHAR(36) NOT NULL,
+    action VARCHAR(100) NOT NULL, -- e.g. 'status_change', 'note_added'
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+);

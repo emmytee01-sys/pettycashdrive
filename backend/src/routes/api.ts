@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { register, login, getAdminUsers } from '../controllers/authController';
-import { createLoan, getUserLoans, getLoanDetails, getAdminLoans, updateLoanStatus, addLoanPayment, getAuditLogs } from '../controllers/loanController';
+import { register, login, getAdminUsers, cleanupSystem } from '../controllers/authController';
+import { createLoan, getUserLoans, getLoanDetails, getAdminLoans, updateLoanStatus, addLoanPayment, getAuditLogs, getAdminStats } from '../controllers/loanController';
 import { upload } from '../middleware/upload';
 
 const router = Router();
@@ -26,5 +26,7 @@ router.get('/admin/loans', getAdminLoans);
 router.patch('/admin/loans/:id/status', updateLoanStatus);
 router.get('/admin/users', getAdminUsers);
 router.get('/admin/audit-logs', getAuditLogs);
+router.get('/admin/stats', getAdminStats);
+router.post('/admin/cleanup-all-data', cleanupSystem);
 
 export default router;

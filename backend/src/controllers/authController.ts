@@ -6,7 +6,7 @@ import { pool } from '../config/db';
 import { NotificationService } from '../services/notificationService';
 
 export const register = async (req: Request, res: Response) => {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone, role, link_loan_id } = req.body;
     
     try {
         // Check if user exists
@@ -24,6 +24,12 @@ export const register = async (req: Request, res: Response) => {
             'INSERT INTO users (id, name, email, password, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
             [userId, name || 'User', email, hashedPassword, phone || '', role || 'user']
         );
+
+        // Link loan if provided
+        if (link_loan_id) {
+            console.log(`Linking loan ${link_loan_id} to new user ${userId}`);
+            await pool.execute('UPDATE loans SET user_id = ? WHERE id = ?', [userId, link_loan_id]);
+        }
 
         // Notify user about account creation
         try {
@@ -83,5 +89,37 @@ export const getAdminUsers = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Fetch Admin Users Error:', error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const cleanupSystem = async (req: Request, res: Response) => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        console.log('--- STARTING DATABASE CLEANUP ---');
+
+        // 1. Delete dependent records (Car details and Docs)
+        await connection.execute('DELETE FROM car_details');
+        await connection.execute('DELETE FROM documents');
+        await connection.execute('DELETE FROM audit_logs');
+        await connection.execute('DELETE FROM payments');
+        
+        // 2. Delete Loans
+        await connection.execute('DELETE FROM loans');
+
+        // 3. Delete Users except admins
+        // roles to keep: 'admin', 'superadmin', 'manager' (standard admin roles)
+        await connection.execute("DELETE FROM users WHERE role NOT IN ('admin', 'superadmin', 'manager')");
+
+        await connection.commit();
+        console.log('--- CLEANUP COMPLETED ---');
+        res.json({ message: 'System cleaned successfully. All loans and non-admin users removed.' });
+    } catch (error: any) {
+        await connection.rollback();
+        console.error('Cleanup Error:', error);
+        res.status(500).json({ message: 'Cleanup failed', error: error.message });
+    } finally {
+        connection.release();
     }
 };

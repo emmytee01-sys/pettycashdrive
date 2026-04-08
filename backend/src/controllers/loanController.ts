@@ -262,6 +262,32 @@ export const addLoanPayment = async (req: Request, res: Response) => {
     }
 };
 
+export const getAdminStats = async (req: Request, res: Response) => {
+    try {
+        const [loanStats]: any = await pool.execute(`
+            SELECT 
+                COUNT(*) as total_loans,
+                SUM(CASE WHEN status = 'disbursed' THEN amount ELSE 0 END) as total_disbursed,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending,
+                SUM(amount) as total_capital
+            FROM loans
+        `);
+
+        const [userStats]: any = await pool.execute('SELECT COUNT(*) as total_users FROM users WHERE role = "user"');
+        
+        const [paymentStats]: any = await pool.execute('SELECT SUM(amount) as total_received FROM payments WHERE status = "successful"');
+
+        res.json({
+            loans: loanStats[0],
+            users: userStats[0],
+            payments: paymentStats[0]
+        });
+    } catch (error) {
+        console.error('Fetch Admin Stats Error:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 export const getAuditLogs = async (req: Request, res: Response) => {
     try {
         const [logs]: any = await pool.execute(`

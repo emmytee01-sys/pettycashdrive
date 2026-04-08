@@ -28,7 +28,7 @@ function cn(...inputs: ClassValue[]) {
 }
 
 // Components
-const Navbar = ({ user }: { user: { role: string } | null }) => {
+const Navbar = ({ user, onLogout }: { user: { role: string } | null, onLogout?: () => void }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -59,14 +59,22 @@ const Navbar = ({ user }: { user: { role: string } | null }) => {
           <a href="#" className="hover:text-primary transition-colors">About Us</a>
           
           {user ? (
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-[10px] text-primary uppercase font-black">{user.role}</div>
-                <div className="text-xs text-white font-bold">Active Member</div>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-[10px] text-primary uppercase font-black">{user.role}</div>
+                  <div className="text-xs text-white font-bold">Active Member</div>
+                </div>
+                <div className="w-10 h-10 rounded-full border border-primary/30 bg-primary/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
               </div>
-              <div className="w-10 h-10 rounded-full border border-primary/30 bg-primary/10 flex items-center justify-center">
-                <User className="w-5 h-5 text-primary" />
-              </div>
+              <button 
+                onClick={onLogout}
+                className="px-5 py-2.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full hover:bg-red-500/20 transition-all font-black text-[10px] uppercase tracking-widest"
+              >
+                Sign Out
+              </button>
             </div>
           ) : (
             <>
@@ -164,7 +172,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [_, setSubmittedLoanId] = useState("");
+  const [submittedLoanId, setSubmittedLoanId] = useState("");
   const [alertModal, setAlertModal] = useState({ show: false, message: '', type: 'error' });
 
   // File states
@@ -197,7 +205,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
     });
 
     try {
-      const res = await fetch('http://localhost:5001/api/loans', {
+      const res = await fetch('/api/loans', {
         method: 'POST',
         body: formData
       });
@@ -218,10 +226,16 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
   const createAccount = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5001/api/auth/register', {
+      const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name: fullName, phone })
+        body: JSON.stringify({ 
+          email, 
+          password, 
+          name: fullName, 
+          phone,
+          link_loan_id: submittedLoanId // Link the loan we just submitted
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -735,6 +749,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
 export default function App() {
   const [view, setView] = useState<'landing' | 'apply' | 'admin' | 'user' | 'auth'>('landing');
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [userRole, setUserRole] = useState<'admin' | 'user' | ''>('');
 
   // Persist session on mount
   useEffect(() => {
@@ -742,12 +757,14 @@ export default function App() {
     const savedRole = localStorage.getItem('pettycash_role');
     if (savedId && savedRole) {
        setCurrentUserId(savedId);
+       setUserRole(savedRole as any);
        setView(savedRole as any);
     }
   }, []);
 
   const handleLogin = (data: { role: 'admin' | 'user', id: string }) => {
     setCurrentUserId(data.id);
+    setUserRole(data.role);
     setView(data.role);
     localStorage.setItem('pettycash_user_id', data.id);
     localStorage.setItem('pettycash_role', data.role);
@@ -769,32 +786,100 @@ export default function App() {
     };
   }, []);
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutSuccess, setLogoutSuccess] = useState(false);
+
   const handleLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const performLogout = () => {
     setCurrentUserId('');
     setView('landing');
     localStorage.removeItem('pettycash_user_id');
     localStorage.removeItem('pettycash_role');
+    localStorage.removeItem('pettycash_token');
+    
+    setShowLogoutModal(false);
+    setLogoutSuccess(true);
+    setTimeout(() => setLogoutSuccess(false), 3000);
   };
 
+  const renderLogoutModals = () => (
+    <>
+      <AnimatePresence>
+        {showLogoutModal && (
+           <motion.div 
+             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+           >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#020617] border border-white/10 rounded-3xl p-8 max-w-sm w-full relative"
+              >
+                 <h3 className="text-xl font-bold text-white mb-4">Confirm Logout</h3>
+                 <p className="text-muted-foreground mb-8">Are you sure you want to log out of your PettyCash account?</p>
+                 <div className="flex items-center gap-4">
+                    <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-bold text-white transition-colors">Cancel</button>
+                    <button onClick={performLogout} className="flex-1 py-3 bg-red-500 hover:bg-red-600 rounded-xl font-bold text-white transition-colors">Log Out</button>
+                 </div>
+              </motion.div>
+           </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {logoutSuccess && (
+           <motion.div 
+             initial={{ opacity: 0, y: -50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -50 }}
+             className="fixed top-6 right-6 z-[100] bg-green-500/10 border border-green-500/20 text-green-500 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl backdrop-blur-md"
+           >
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="font-bold">Logged out successfully</span>
+           </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+
   if (view === 'auth') {
-    return <AuthPage onLogin={handleLogin} onBack={() => setView('landing')} />;
+    return (
+      <>
+        <AuthPage onLogin={handleLogin} onBack={() => setView('landing')} />
+        {renderLogoutModals()}
+      </>
+    );
   }
 
   if (view === 'admin') {
-    return <AdminDashboard onBack={handleLogout} />;
+    return (
+      <>
+        <AdminDashboard onBack={handleLogout} />
+        {renderLogoutModals()}
+      </>
+    );
   }
 
   if (view === 'user') {
-    return <UserPortal onLogout={handleLogout} userId={currentUserId} />;
+    return (
+      <>
+        <UserPortal onLogout={handleLogout} userId={currentUserId} />
+        {renderLogoutModals()}
+      </>
+    );
   }
 
   if (view === 'apply') {
-    return <LoanForm onBack={() => setView('landing')} userId={currentUserId} />;
+    return (
+      <>
+        <LoanForm onBack={() => setView('landing')} userId={currentUserId} />
+        {renderLogoutModals()}
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen bg-[#020617] text-white selection:bg-primary/30 scroll-smooth">
-      <Navbar user={false ? { role: view } : null} />
+      <Navbar user={currentUserId ? { role: userRole } : null} onLogout={handleLogout} />
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 overflow-hidden">
@@ -1301,6 +1386,8 @@ export default function App() {
           © 2026 PettyCash. All rights reserved. Registered with CBN.
         </div>
       </footer>
+      {renderLogoutModals()}
     </div>
   );
 }
+

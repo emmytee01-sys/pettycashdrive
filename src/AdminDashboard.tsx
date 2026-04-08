@@ -170,10 +170,21 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
   ]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [_3, setAuditLogs] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/admin/stats');
+      const data = await res.json();
+      setStats(data);
+    } catch (err) {
+      console.error("Failed to fetch admin stats:", err);
+    }
+  };
 
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/admin/audit-logs');
+      const res = await fetch('/api/admin/audit-logs');
       const data = await res.json();
       setAuditLogs(data);
     } catch (err) {
@@ -183,7 +194,7 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const fetchLoans = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/admin/loans');
+      const res = await fetch('/api/admin/loans');
       const data = await res.json();
       setLoans(data);
     } catch (err) {
@@ -193,7 +204,7 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/admin/users');
+      const res = await fetch('/api/admin/users');
       const data = await res.json();
       setUsers(data);
     } catch (err) {
@@ -204,7 +215,7 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
   useEffect(() => {
     const loadAll = async () => {
        setLoading(true);
-       await Promise.all([fetchLoans(), fetchUsers(), fetchAuditLogs()]);
+       await Promise.all([fetchLoans(), fetchUsers(), fetchAuditLogs(), fetchStats()]);
        setLoading(false);
        setLastFetchTime(new Date().toLocaleTimeString());
     };
@@ -251,7 +262,7 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
 
   const handleUpdateStatus = async (loanId: string, status: string, notes?: string) => {
      try {
-       const res = await fetch(`http://localhost:5001/api/admin/loans/${loanId}/status`, {
+       const res = await fetch(`https://api.pettycash.com.ng/api/admin/loans/${loanId}/status`, {
          method: 'PATCH',
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify({ status, notes })
@@ -460,9 +471,21 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                     <h3 className="text-lg font-bold mb-6">Risk Index</h3>
                     <div className="space-y-6">
                        {[
-                         { label: 'Low Risk Approvals', val: 78, color: 'primary' },
-                         { label: 'High Exposure', val: 12, color: 'red-500' },
-                         { label: 'Under Verification', val: 10, color: 'blue-400' }
+                         { 
+                           label: 'Low Risk Approvals', 
+                           val: loans.length > 0 ? Math.round((loans.filter(l => l.status === 'disbursed' || l.status === 'approved').length / loans.length) * 100) : 0, 
+                           color: 'primary' 
+                         },
+                         { 
+                           label: 'High Exposure', 
+                           val: loans.length > 0 ? Math.round((loans.filter(l => Number(l.amount) > 1000000).length / loans.length) * 100) : 0, 
+                           color: 'red-500' 
+                         },
+                         { 
+                           label: 'Under Verification', 
+                           val: loans.length > 0 ? Math.round((loans.filter(l => l.status === 'pending').length / loans.length) * 100) : 0, 
+                           color: 'blue-400' 
+                         }
                        ].map((r, i) => (
                          <div key={i}>
                             <div className="flex justify-between text-[10px] uppercase font-black tracking-widest mb-2">
@@ -673,18 +696,18 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8">
                        <div className="text-xs font-black text-primary uppercase tracking-widest mb-4">Portfolio Value</div>
-                       <div className="text-4xl font-black mb-4">₦1.2B</div>
-                       <div className="text-xs font-bold text-green-400">+18% vs Last Month</div>
+                       <div className="text-4xl font-black mb-4">{formatCompact(Number(stats?.loans?.total_capital || 0))}</div>
+                       <div className="text-xs font-bold text-green-400">Total Capital</div>
                     </div>
                     <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8 text-blue-400">
-                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Active Yield</div>
-                       <div className="text-4xl font-black mb-4 text-white">₦84M</div>
-                       <div className="text-xs font-bold opacity-100">Projected Annual</div>
+                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Disbursed Funds</div>
+                       <div className="text-4xl font-black mb-4 text-white">{formatCompact(Number(stats?.loans?.total_disbursed || 0))}</div>
+                       <div className="text-xs font-bold opacity-100">Live Disbursement</div>
                     </div>
                     <div className="bg-card/40 border border-white/5 rounded-[2.5rem] p-8 text-red-400">
-                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Overdue Risk</div>
-                       <div className="text-4xl font-black mb-4 text-white">4.2%</div>
-                       <div className="text-xs font-bold text-red-500">Under Control</div>
+                       <div className="text-xs font-black uppercase tracking-widest mb-4 opacity-70">Total Repayments</div>
+                       <div className="text-4xl font-black mb-4 text-white">{formatCompact(Number(stats?.payments?.total_received || 0))}</div>
+                       <div className="text-xs font-bold text-green-500">Collected</div>
                     </div>
                  </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -694,12 +717,12 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                            <p className="text-xs text-muted-foreground">Institutional capital deployment velocity (30d).</p>
                         </div>
                         <div className="flex-1 flex items-end gap-3 mt-10">
-                           {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
+                           {[0, 0, 0, 0, 0, 0, 0].map((h, i) => (
                              <motion.div 
-                               key={i}
-                               initial={{ height: 0 }}
-                               animate={{ height: `${h}%` }}
-                               className="flex-1 bg-gradient-to-t from-primary to-blue-600 rounded-t-xl opacity-80 hover:opacity-100 transition-opacity"
+                                key={i}
+                                initial={{ height: 0 }}
+                                animate={{ height: `${h}%` }}
+                                className="flex-1 bg-gradient-to-t from-primary to-blue-600 rounded-t-xl opacity-80 hover:opacity-100 transition-opacity"
                              />
                            ))}
                         </div>
@@ -710,14 +733,13 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                            <div className="relative w-48 h-48 rounded-full border-[10px] border-white/5 flex items-center justify-center">
                               <div className="absolute inset-0 rounded-full border-[10px] border-primary border-t-transparent border-r-transparent rotate-45" />
                               <div className="text-center">
-                                 <div className="text-2xl font-black">74%</div>
-                                 <div className="text-[10px] uppercase font-bold text-muted-foreground">Efficiency</div>
+                                 <div className="text-2xl font-black">{stats?.loans?.total_loans || 0}</div>
+                                 <div className="text-[10px] uppercase font-bold text-muted-foreground">Active Loans</div>
                               </div>
                            </div>
                         </div>
                      </div>
                   </div>
-
               </motion.div>
             )}
 
@@ -734,11 +756,21 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                         <tr className="hover:bg-white/5">
-                            <td className="px-8 py-5"><div className="text-sm font-bold">DB_MIGRATE: Missing Columns</div></td>
-                            <td className="px-8 py-5 text-xs text-muted-foreground">PettyCash AI Agent</td>
-                            <td className="px-8 py-5"><span className="text-[10px] font-black text-green-400 uppercase">Success</span></td>
-                         </tr>
+                         {_3.slice(0, 20).map((log, index) => (
+                            <tr key={index} className="hover:bg-white/5">
+                               <td className="px-8 py-5">
+                                 <div className="text-sm font-bold">{log.action.replace(/_/g, ' ').toUpperCase()}</div>
+                                 <div className="text-[10px] text-muted-foreground">Loan Ref: #{log.loan_id.substring(0, 8)}</div>
+                               </td>
+                               <td className="px-8 py-5 text-xs text-muted-foreground">{log.user_name || 'System Admin'}</td>
+                               <td className="px-8 py-5"><span className="text-[10px] font-black text-green-400 uppercase">Logged</span></td>
+                            </tr>
+                         ))}
+                         {_3.length === 0 && (
+                            <tr>
+                               <td colSpan={3} className="px-8 py-10 text-center text-muted-foreground italic">No audit sequences found.</td>
+                            </tr>
+                         )}
                       </tbody>
                    </table>
                  </div>
@@ -782,67 +814,6 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                     <div className="flex gap-4 mt-8">
                        <button onClick={() => setShowRejectModal(false)} className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold">Cancel</button>
                        <button disabled={!rejectionReason.trim()} onClick={() => handleUpdateStatus(selectedLoan.id, 'rejected', rejectionReason)} className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl shadow-xl shadow-red-500/20">Decline User</button>
-                    </div>
-                 </motion.div>
-              </div>
-            )}
-
-            {selectedDoc && (
-              <div className="fixed inset-0 z-[200] flex items-center justify-center p-8 lg:p-20">
-                 <motion.div 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }} 
-                    exit={{ opacity: 0 }} 
-                    onClick={() => setSelectedDoc(null)} 
-                    className="absolute inset-0 bg-[#020617]/95 backdrop-blur-xl" 
-                 />
-                 <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }} 
-                    animate={{ opacity: 1, scale: 1, y: 0 }} 
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }} 
-                    className="w-full max-w-5xl aspect-[4/3] lg:aspect-auto lg:h-full bg-slate-900 border border-white/10 rounded-[3rem] overflow-hidden relative z-10 shadow-2xl flex flex-col"
-                 >
-                    <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20">
-                       <div>
-                          <div className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Document Preview</div>
-                          <h3 className="text-xl font-bold uppercase tracking-tight">{selectedDoc.type.replace(/_/g, ' ')}</h3>
-                       </div>
-                       <button 
-                          onClick={() => setSelectedDoc(null)}
-                          className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"
-                       >
-                          <X className="w-6 h-6" />
-                       </button>
-                    </div>
-
-                    <div className="flex-1 bg-black p-4 lg:p-8 flex items-center justify-center overflow-auto">
-                       {selectedDoc.url.toLowerCase().endsWith('.pdf') ? (
-                          <iframe 
-                             src={`http://localhost:5001${selectedDoc.url}`} 
-                             className="w-full h-full rounded-2xl border-none"
-                             title="PDF Viewer"
-                          />
-                       ) : (
-                          <img 
-                             src={`http://localhost:5001${selectedDoc.url}`} 
-                             alt="Document" 
-                             className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-                             onError={(e) => {
-                                (e.target as any).src = 'https://placehold.co/600x400/020617/primary?text=Preview+Unavailable';
-                             }}
-                          />
-                       )}
-                    </div>
-                    
-                    <div className="p-8 bg-black/40 border-t border-white/5 flex items-center justify-center gap-4">
-                       <a 
-                          href={`http://localhost:5001${selectedDoc.url}`} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="px-8 py-3 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
-                       >
-                          <Download className="w-4 h-4" /> Open Original
-                       </a>
                     </div>
                  </motion.div>
               </div>
@@ -941,14 +912,14 @@ export const AdminDashboard: FC<{ onBack?: () => void }> = ({ onBack }) => {
                   </div>
                   <div className="p-10 overflow-auto flex justify-center bg-black/20">
                      <img 
-                       src={selectedDoc.url.startsWith('http') ? selectedDoc.url : `http://localhost:5001${selectedDoc.url}`} 
+                       src={selectedDoc.url.startsWith('http') ? selectedDoc.url : `https://api.pettycash.com.ng${selectedDoc.url}`} 
                        className="max-w-full h-auto rounded-2xl shadow-2xl border border-white/5" 
                        alt="Verification Document" 
                      />
                   </div>
                   <div className="p-8 border-t border-white/5 bg-[#0f172a]/80 backdrop-blur-md flex justify-end gap-4">
                      <a 
-                       href={selectedDoc.url.startsWith('http') ? selectedDoc.url : `http://localhost:5001${selectedDoc.url}`} 
+                       href={selectedDoc.url.startsWith('http') ? selectedDoc.url : `https://api.pettycash.com.ng${selectedDoc.url}`} 
                        download
                        className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-sm hover:bg-white/10 transition-all flex items-center gap-2"
                      >
