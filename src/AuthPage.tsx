@@ -9,7 +9,6 @@ import {
   EyeOff, 
   ChevronLeft,
   User,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   Phone
@@ -285,24 +284,6 @@ export const AuthPage: FC<AuthPageProps> = ({ onLogin, onBack }) => {
             )}
           </AnimatePresence>
 
-          <div className="pt-8 border-t border-slate-100">
-             <div className="flex gap-4">
-                <button 
-                  onClick={() => onLogin({ role: 'admin', id: 'admin-seed-id' })}
-                  className="flex-1 flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
-                >
-                   <ShieldCheck className="w-6 h-6 text-slate-400 group-hover:text-primary" />
-                   <span className="text-[10px] font-black text-slate-400 group-hover:text-primary uppercase tracking-tighter">Demo Admin</span>
-                </button>
-                <button 
-                  onClick={() => onLogin({ role: 'user', id: 'tosin-001-uuid-999-888' })}
-                  className="flex-1 flex flex-col items-center gap-2 p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:bg-primary/10 hover:border-primary/20 transition-all group"
-                >
-                   <User className="w-6 h-6 text-slate-400 group-hover:text-primary" />
-                   <span className="text-[10px] font-black text-slate-400 group-hover:text-primary uppercase tracking-tighter">Demo User</span>
-                </button>
-             </div>
-          </div>
         </motion.div>
       </div>
     </div>

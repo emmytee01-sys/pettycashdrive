@@ -15,7 +15,8 @@ import {
   FileText,
   Plus,
   Mail,
-  Lock
+  Lock,
+  DollarSign
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -163,6 +164,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
   const [year, setYear] = useState("");
   const [condition, setCondition] = useState("");
   const [stateOfRes, setStateOfRes] = useState("");
+  const [plateNumber, setPlateNumber] = useState("");
   
   // New user/loan states
   const [loanAmount, setLoanAmount] = useState("2500000"); // Default from UI
@@ -174,6 +176,24 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
   const [loading, setLoading] = useState(false);
   const [submittedLoanId, setSubmittedLoanId] = useState("");
   const [alertModal, setAlertModal] = useState({ show: false, message: '', type: 'error' });
+
+  // Bank & Financial Details
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [nin, setNin] = useState("");
+  const [bvn, setBvn] = useState("");
+  const [tenure, setTenure] = useState("12");
+  const [repaymentPlan, setRepaymentPlan] = useState("Monthly");
+
+  // Next of Kin Details
+  const [nokFullName, setNokFullName] = useState("");
+  const [nokPhone, setNokPhone] = useState("");
+  const [nokEmail, setNokEmail] = useState("");
+  const [nokAddress, setNokAddress] = useState("");
+  const [nokCity, setNokCity] = useState("");
+  const [nokState, setNokState] = useState("");
+  const [nokCountry] = useState("Nigeria");
 
   // File states
   const [files, setFiles] = useState<{ [key: string]: File | null }>({
@@ -198,6 +218,24 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
     formData.append('car_year', year);
     formData.append('is_owner', 'true');
     formData.append('state_of_res', stateOfRes);
+    formData.append('tenure', tenure);
+    formData.append('car_plate', plateNumber);
+
+    // Financial details
+    formData.append('bank_name', bankName);
+    formData.append('account_number', accountNumber);
+    formData.append('account_name', accountName);
+    formData.append('nin', nin);
+    formData.append('bvn', bvn);
+
+    // Next of Kin
+    formData.append('nok_name', nokFullName);
+    formData.append('nok_phone', nokPhone);
+    formData.append('nok_email', nokEmail);
+    formData.append('nok_address', nokAddress);
+    formData.append('nok_city', nokCity);
+    formData.append('nok_state', nokState);
+    formData.append('nok_country', nokCountry);
 
     // Append files
     Object.entries(files).forEach(([key, file]) => {
@@ -212,7 +250,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
       const data = await res.json();
       if (res.ok) {
         setSubmittedLoanId(data.loan_id);
-        setStep(4);
+        setStep(5);
       } else {
         setAlertModal({ show: true, message: data.message || 'Submission failed', type: 'error' });
       }
@@ -256,7 +294,8 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
   const steps = [
     { label: "Loan Details", icon: <CreditCard className="w-5 h-5" /> },
     { label: "Car Valuation", icon: <Car className="w-5 h-5" /> },
-    { label: "Upload Documents", icon: <FileText className="w-5 h-5" /> },
+    { label: "Documents", icon: <FileText className="w-5 h-5" /> },
+    { label: "Payout Info", icon: <DollarSign className="w-5 h-5" /> },
   ];
 
   return (
@@ -282,6 +321,10 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
               <>Your loan offer <br /> is just a <span className="text-primary">few simple</span> <br /> steps away.</>
             ) : step === 2 ? (
               <>Valuing your car <br /> can get you a <span className="text-primary">loan offer</span> <br /> tailored to its worth.</>
+            ) : step === 3 ? (
+              <>Verify your <br /> vehicle with <span className="text-primary">official</span> <br /> documents.</>
+            ) : step === 4 ? (
+              <>Tell us where <br /> to pay your <span className="text-primary">loan</span> <br /> into.</>
             ) : (
               <>Application <br /> successfully <span className="text-primary">submitted.</span></>
             )}
@@ -302,7 +345,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
                     <User className="w-6 h-6" />
                   </div>
                   <div className="h-2 w-32 bg-white/10 rounded-full flex overflow-hidden">
-                     <motion.div initial={{ width: 0 }} animate={{ width: step === 1 ? "33%" : step === 2 ? "66%" : "100%" }} className="h-full bg-primary" />
+                     <motion.div initial={{ width: 0 }} animate={{ width: `${(step / 5) * 100}%` }} className="h-full bg-primary" />
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -399,29 +442,39 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">NGN</span>
                           <input 
-                            type="number" 
+                            type="text" 
                             placeholder="0" 
-                            value={loanAmount}
-                            onChange={(e) => setLoanAmount(e.target.value)}
+                            value={loanAmount.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, '');
+                              setLoanAmount(value);
+                            }}
                             className="w-full p-4 pl-16 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
                           />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">For how long do you need this loan?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Select Tenure</option>
-                          <option>3 Months</option>
-                          <option>6 Months</option>
-                          <option>12 Months</option>
+                        <select 
+                          value={tenure}
+                          onChange={(e) => setTenure(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="">Select Tenure</option>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                            <option key={m} value={m}>{m} {m === 1 ? 'Month' : 'Months'}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-bold text-slate-700">How would you like to repay your loan?</label>
-                        <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
-                          <option>Repayment Plan</option>
-                          <option>Monthly</option>
-                          <option>Quarterly</option>
+                        <select 
+                          value={repaymentPlan}
+                          onChange={(e) => setRepaymentPlan(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                        >
+                          <option value="Monthly">Monthly</option>
+                          <option value="Quarterly">Quarterly</option>
                         </select>
                       </div>
                     </div>
@@ -538,11 +591,17 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">What is your car's license plate number? (Optional)</label>
-                        <input type="text" placeholder="Enter License Plate Number" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        <label className="text-sm font-bold text-slate-700">What is your car's license plate number?</label>
+                        <input 
+                          type="text" 
+                          placeholder="Enter License Plate Number" 
+                          value={plateNumber}
+                          onChange={(e) => setPlateNumber(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" 
+                        />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">Does your car have Insurance? (Optional)</label>
+                        <label className="text-sm font-bold text-slate-700">Does your car have Insurance?</label>
                         <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
                           <option>Select Option</option>
                           <option>Yes</option>
@@ -550,7 +609,7 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-700">What type of insurance do you have? (Optional)</label>
+                        <label className="text-sm font-bold text-slate-700">What type of insurance do you have?</label>
                         <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none">
                           <option>Insurance Type</option>
                           <option>Third Party</option>
@@ -615,6 +674,89 @@ const LoanForm: FC<{ onBack: () => void, userId: string }> = ({ onBack, userId }
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setStep(4)}
+                  className="mt-12 w-full py-5 bg-[#020617] text-white rounded-[2rem] font-black text-xl hover:scale-[1.02] transition-all shadow-xl flex items-center justify-center gap-3"
+                >
+                  Next Step <ArrowRight className="w-6 h-6" />
+                </button>
+              </>
+            ) : step === 4 ? (
+              <>
+                <h2 className="text-3xl font-black mb-4">Payout & Next of Kin</h2>
+                <p className="text-slate-500 mb-12">Final details needed for your loan disbursement and records.</p>
+
+                <div className="grid md:grid-cols-2 gap-x-12 gap-y-8">
+                  <div className="space-y-6">
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Bank Details</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Bank Name</label>
+                        <input type="text" placeholder="e.g. GTBank" value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Account Number</label>
+                        <input type="text" placeholder="10 Digits" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Account Name</label>
+                        <input type="text" placeholder="Full Legal Name" value={accountName} onChange={(e) => setAccountName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">NIN</label>
+                          <input type="text" placeholder="NIN Number" value={nin} onChange={(e) => setNin(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">BVN</label>
+                          <input type="text" placeholder="BVN Number" value={bvn} onChange={(e) => setBvn(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="font-black text-sm uppercase tracking-wider text-slate-400">Next of Kin Details</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Full Name</label>
+                        <input type="text" placeholder="Full Name" value={nokFullName} onChange={(e) => setNokFullName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Phone</label>
+                          <input type="tel" placeholder="Phone Number" value={nokPhone} onChange={(e) => setNokPhone(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">Email</label>
+                          <input type="email" placeholder="Email Address" value={nokEmail} onChange={(e) => setNokEmail(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-slate-700">Home Address</label>
+                        <input type="text" placeholder="Full Address" value={nokAddress} onChange={(e) => setNokAddress(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">City</label>
+                          <input type="text" placeholder="City" value={nokCity} onChange={(e) => setNokCity(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700">State</label>
+                          <select 
+                            value={nokState} 
+                            onChange={(e) => setNokState(e.target.value)} 
+                            className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:outline-none transition-all appearance-none"
+                          >
+                             <option value="">Select State</option>
+                             {STATES_IN_NIGERIA.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

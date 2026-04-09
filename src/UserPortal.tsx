@@ -16,7 +16,8 @@ import {
   DollarSign,
   Zap,
   Info,
-  X
+  X,
+  Menu
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -76,6 +77,8 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
     { id: 1, title: 'Welcome Back', text: 'Your loan verification is currently active.', time: 'Just now', type: 'info' }
   ]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const fetchUserData = async () => {
     try {
@@ -114,13 +117,15 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
   const carInfo = data?.car || { make: "Vehicle", model: "Pending", year: "2024", plate_number: "N/A", valuation: 0 };
   const loanRef = data?.loan_reference || "#PC-PENDING";
   const adminNotes = data?.admin_notes || "Your application did not meet our criteria at this time.";
+  const frontPhoto = data?.documents?.find((doc: any) => doc.type === 'front_photo')?.url;
 
   const totalLoanVal = Number(data?.amount || 0);
-  const paidVal = data?.paid || 0;
-  const remainingVal = totalLoanVal - paidVal;
-  const progressPercent = totalLoanVal > 0 ? Math.round((paidVal / totalLoanVal) * 100) : 0;
-  const creditScore = data?.credit_score || 650;
-  const monthlyRepayment = Math.round((totalLoanVal * 1.035) / (data?.tenure || 12)); 
+  const totalToPay = Number(data?.total_payback || 0);
+  const paidVal = Number(data?.amount_paid || 0);
+  const remainingVal = Number(data?.remaining_balance || 0);
+  const progressPercent = totalToPay > 0 ? Math.round((paidVal / totalToPay) * 100) : 0;
+  const creditScore = data?.credit_score || 100;
+  const monthlyRepayment = Number(data?.monthly_payment || 0); 
 
   const handlePayment = async () => {
     if (remainingVal <= 0) return setModal({
@@ -154,11 +159,30 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex">
+    <div className="min-h-screen bg-[#020617] text-white flex flex-col lg:flex-row relative">
+      {/* Mobile Header Toggle */}
+      <div className="lg:hidden flex items-center justify-between p-6 border-b border-white/5 bg-[#020617] sticky top-0 z-[60]">
+         <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+               <Zap className="text-primary-foreground w-5 h-5" />
+            </div>
+            <span className="font-black text-lg tracking-tight">Petty<span className="text-primary italic">Cash</span></span>
+         </div>
+         <button 
+           onClick={() => setShowMobileMenu(!showMobileMenu)}
+           className="p-2 transition-all"
+         >
+           {showMobileMenu ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6 text-primary" />}
+         </button>
+      </div>
+
       {/* Sidebar */}
-      <aside className="w-72 border-r border-white/5 flex flex-col fixed h-screen z-50 bg-[#020617]">
+      <aside className={cn(
+        "w-72 border-r border-white/5 flex flex-col fixed h-screen z-50 bg-[#020617] transition-transform duration-300 lg:translate-x-0",
+        showMobileMenu ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="p-8">
-           <div className="flex items-center gap-3 mb-10">
+           <div className="hidden lg:flex items-center gap-3 mb-10">
               <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
                  <Zap className="text-primary-foreground w-6 h-6" />
               </div>
@@ -170,32 +194,32 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                 icon={<Home className="w-5 h-5" />} 
                 label="Overview" 
                 active={activeTab === "Dashboard"} 
-                onClick={() => setActiveTab("Dashboard")} 
+                onClick={() => { setActiveTab("Dashboard"); setShowMobileMenu(false); }} 
               />
               <NavButton 
                 icon={<CreditCard className="w-5 h-5" />} 
                 label="My Loan" 
                 active={activeTab === "Loan"} 
-                onClick={() => setActiveTab("Loan")} 
+                onClick={() => { setActiveTab("Loan"); setShowMobileMenu(false); }} 
               />
               <NavButton 
                 icon={<Car className="w-5 h-5" />} 
                 label="Car & Valuation" 
                 active={activeTab === "Car"} 
-                onClick={() => setActiveTab("Car")} 
+                onClick={() => { setActiveTab("Car"); setShowMobileMenu(false); }} 
               />
               <NavButton 
                 icon={<History className="w-5 h-5" />} 
                 label="Payments" 
                 active={activeTab === "Payments"} 
-                onClick={() => (userStatus === 'approved' || userStatus === 'disbursed') && setActiveTab("Payments")} 
+                onClick={() => { (userStatus === 'approved' || userStatus === 'disbursed') && setActiveTab("Payments"); setShowMobileMenu(false); }} 
               />
               <div className="pt-6 pb-2 px-4 uppercase text-[10px] font-black text-muted-foreground tracking-widest opacity-50">Support</div>
               <NavButton 
                 icon={<Info className="w-5 h-5" />} 
                 label="Help Center" 
                 active={activeTab === "Help"} 
-                onClick={() => setActiveTab("Help")} 
+                onClick={() => { setActiveTab("Help"); setShowMobileMenu(false); }} 
               />
            </div>
         </div>
@@ -212,10 +236,10 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-72 p-10 max-w-7xl">
-        <header className="flex justify-between items-center mb-12">
+      <main className="flex-1 lg:ml-72 p-6 md:p-10 max-w-7xl">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
            <div>
-              <h1 className="text-4xl font-black text-white mb-2">Welcome, {userName === "User" ? "User" : userName.split(' ')[0]} 👋</h1>
+              <h1 className="text-3xl md:text-4xl font-black text-white mb-2">Welcome, {userName === "User" ? "User" : userName.split(' ')[0]} 👋</h1>
               <p className="text-muted-foreground font-medium flex items-center gap-2">
                 User ID: <span className="font-mono text-xs font-bold text-primary">{loanRef}</span>
                 <span className="w-1 h-1 rounded-full bg-white/20" />
@@ -364,6 +388,91 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                              </div>
                           </div>
                        </div>
+
+                       <div className="bg-white/5 border border-white/5 rounded-3xl p-8 max-w-4xl mt-10">
+                          <div className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-6 flex items-center gap-2">
+                             <Clock className="w-4 h-4" /> Active Repayment Plan
+                          </div>
+                          <div className="overflow-x-auto">
+                             <table className="w-full text-left">
+                                <thead>
+                                   <tr className="border-b border-white/5 text-[10px] font-black uppercase text-slate-500">
+                                      <th className="pb-4 pr-6">Installment</th>
+                                      <th className="pb-4 pr-6">Amount</th>
+                                      <th className="pb-4 pr-6">Due Date</th>
+                                      <th className="pb-4">Status</th>
+                                   </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                   {(data?.repayment_plan || []).map((item: any, i: number) => (
+                                      <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                         <td className="py-5 pr-6 text-sm font-bold text-slate-300">{item.month}</td>
+                                         <td className="py-5 pr-6 text-sm font-black text-white">₦{Number(item.amount).toLocaleString()}</td>
+                                         <td className="py-5 pr-6 text-xs text-slate-400">{new Date(item.due_date).toLocaleDateString()}</td>
+                                         <td className="py-5">
+                                            {item.status === 'Paid' ? (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-400">
+                                                  <div className="w-1 h-1 rounded-full bg-green-400" /> Paid
+                                               </span>
+                                            ) : item.status === 'Missed' ? (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-red-400">
+                                                  <div className="w-1 h-1 rounded-full bg-red-400" /> Missed
+                                               </span>
+                                            ) : (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
+                                                  <div className="w-1 h-1 rounded-full bg-slate-500" /> Upcoming
+                                               </span>
+                                            )}
+                                         </td>
+                                      </tr>
+                                   ))}
+                                </tbody>
+                             </table>
+                          </div>
+                       </div>
+
+                       {/* Repayment Schedule Table */}
+                       <div className="bg-white/5 border border-white/5 rounded-3xl p-8 max-w-4xl mt-10">
+                          <div className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-6 flex items-center gap-2">
+                             <Clock className="w-4 h-4" /> Active Repayment Plan
+                          </div>
+                          <div className="overflow-x-auto">
+                             <table className="w-full text-left">
+                                <thead>
+                                   <tr className="border-b border-white/5 text-[10px] font-black uppercase text-slate-500">
+                                      <th className="pb-4 pr-6">Installment</th>
+                                      <th className="pb-4 pr-6">Amount</th>
+                                      <th className="pb-4 pr-6">Due Date</th>
+                                      <th className="pb-4">Status</th>
+                                   </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                   {(data?.repayment_plan || []).map((item: any, i: number) => (
+                                      <tr key={i} className="hover:bg-white/5 transition-colors group">
+                                         <td className="py-5 pr-6 text-sm font-bold text-slate-300">{item.month}</td>
+                                         <td className="py-5 pr-6 text-sm font-black text-white">₦{Number(item.amount).toLocaleString()}</td>
+                                         <td className="py-5 pr-6 text-xs text-slate-400">{new Date(item.due_date).toLocaleDateString()}</td>
+                                         <td className="py-5">
+                                            {item.status === 'Paid' ? (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-400">
+                                                  <div className="w-1 h-1 rounded-full bg-green-400" /> Paid
+                                               </span>
+                                            ) : item.status === 'Missed' ? (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-red-400">
+                                                  <div className="w-1 h-1 rounded-full bg-red-400" /> Missed
+                                               </span>
+                                            ) : (
+                                               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
+                                                  <div className="w-1 h-1 rounded-full bg-slate-500" /> Upcoming
+                                               </span>
+                                            )}
+                                         </td>
+                                      </tr>
+                                   ))}
+                                </tbody>
+                             </table>
+                          </div>
+                       </div>
                     </div>
                  </div>
 
@@ -448,12 +557,12 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                       <div>
                         <div className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-4">Total Outstanding</div>
                         <div className="text-5xl font-black text-white mb-2">₦{remainingVal.toLocaleString()}</div>
-                        <div className="text-sm font-medium text-slate-400">Next payment of <span className="text-white font-bold">₦{monthlyRepayment.toLocaleString()}</span> due on the <span className="text-primary font-bold">15th of next month</span>.</div>
+                        <div className="text-sm font-medium text-slate-400">Next payment due on <span className="text-primary font-bold">{data?.next_payment_date ? new Date(data.next_payment_date).toLocaleDateString() : 'N/A'}</span>.</div>
                       </div>
                       <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-4 rounded-3xl text-center">
                          <div className="text-[10px] font-black text-slate-400 uppercase mb-1">Credit Score</div>
                          <div className="text-2xl font-black text-green-400">{creditScore}</div>
-                         <div className="text-[8px] font-bold text-slate-500">{creditScore > 750 ? 'EXCELLENT' : creditScore > 650 ? 'GOOD' : 'FAIR'}</div>
+                         <div className="text-[8px] font-bold text-slate-500">{creditScore >= 90 ? 'EXCELLENT' : creditScore >= 75 ? 'GOOD' : creditScore >= 50 ? 'FAIR' : 'POOR'}</div>
                       </div>
                    </div>
                    <div className="relative z-10 flex gap-4">
@@ -497,14 +606,17 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                  <StatBox icon={<DollarSign className="w-5 h-5" />} label="Approved Loan" value={loanAmount} sub={`Disbursed ${new Date(data?.created_at).toLocaleDateString()}`} />
-                 <StatBox icon={<Car className="w-5 h-5" />} label="Car Value" value={`₦${(carInfo.valuation || 0).toLocaleString()}`} sub={`${carInfo.make} ${carInfo.model}`} color="blue-400" />
-                 <StatBox icon={<TrendingUp className="w-5 h-5" />} label="Total Repayable" value={`₦${Math.round(totalLoanVal * 1.035).toLocaleString()}`} sub="Incl. Interest" color="purple-400" />
+                 <StatBox icon={<Car className="w-5 h-5" />} label="Car Value" value={`₦${Number(carInfo.valuation || 0).toLocaleString()}`} sub={`${carInfo.make} ${carInfo.model}`} color="blue-400" />
+                 <StatBox icon={<TrendingUp className="w-5 h-5" />} label="Total Repayable" value={`₦${totalToPay.toLocaleString()}`} sub="Incl. Interest" color="purple-400" />
                  <StatBox icon={<ShieldCheck className="w-5 h-5" />} label="Protection" value="Active" sub={carInfo.insurance_type || 'Comprehensive'} color="green-400" />
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                  <div className="lg:col-span-1 group relative rounded-[3rem] overflow-hidden bg-card/40 border border-white/5">
-                    <img src="https://images.unsplash.com/photo-1520031441872-265e4ff70366?auto=format&fit=crop&q=80&w=1000" className="w-full h-64 object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
+                    <img 
+                      src={frontPhoto || "https://images.unsplash.com/photo-1520031441872-265e4ff70366?auto=format&fit=crop&q=80&w=1000"} 
+                      className="w-full h-64 object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" 
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/40 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-8">
                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/20 text-primary rounded-full text-[10px] font-black uppercase mb-3">Your Vehicle</div>
@@ -573,46 +685,50 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-8"
             >
-               <h2 className="text-3xl font-black">Loan Breakdown</h2>
-               <div className="grid md:grid-cols-2 gap-8">
-                  <div className="bg-card/40 border border-white/5 rounded-[3rem] p-10">
-                     <PieChartIcon className="w-12 h-12 text-primary mb-6" />
-                     <h3 className="text-xl font-black mb-4">Repayment Structure</h3>
-                     <p className="text-muted-foreground mb-8">Detailed view of how your payments are distributed between principal and interest.</p>
-                     
-                     <div className="space-y-6">
-                        <div>
-                           <div className="flex justify-between text-sm mb-2 font-bold">
-                              <span>Principal Amount</span>
-                              <span>85%</span>
-                           </div>
-                           <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full w-[85%] bg-primary" />
-                           </div>
-                        </div>
-                        <div>
-                           <div className="flex justify-between text-sm mb-2 font-bold">
-                              <span>Interest Fees</span>
-                              <span>15%</span>
-                           </div>
-                           <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                              <div className="h-full w-[15%] bg-blue-500" />
-                           </div>
-                        </div>
-                     </div>
+               <div className="flex justify-between items-end">
+                  <div>
+                    <h2 className="text-3xl font-black">Loan Breakdown</h2>
+                    <p className="text-muted-foreground mt-2">Comprehensive overview of your active financing structure.</p>
                   </div>
-
-                  <div className="bg-card/40 border border-white/5 rounded-[3rem] p-10 flex flex-col justify-between">
-                     <div>
-                        <History className="w-12 h-12 text-blue-400 mb-6" />
-                        <h3 className="text-xl font-black mb-4">Pay Off Early</h3>
-                        <p className="text-muted-foreground mb-8">Reduce your interest rates by paying off your loan before the tenure ends.</p>
-                     </div>
-                     <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-3">
-                        Calculate Early Payout <Plus className="w-4 h-4" />
-                      </button>
-                  </div>
+                  <button 
+                    onClick={() => setShowDetailedModal(true)}
+                    className="px-6 py-3 bg-primary/10 text-primary border border-primary/20 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-primary/20 transition-all flex items-center gap-2"
+                  >
+                    View Full Application Details <ChevronRight className="w-4 h-4" />
+                  </button>
                </div>
+
+                <div className="grid grid-cols-1 gap-8">
+                   <div className="bg-card/40 border border-white/5 rounded-[3rem] p-10">
+                      <div className="flex items-center gap-4 mb-8">
+                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                            <PieChartIcon className="w-6 h-6" />
+                         </div>
+                         <h3 className="text-xl font-black">Repayment Metrics</h3>
+                      </div>
+                      
+                      <div className="bg-white/5 border border-white/5 rounded-3xl p-8 max-w-4xl">
+                         <div className="text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-6">Key Metrics</div>
+                         <div className="grid md:grid-cols-2 gap-x-12 gap-y-4">
+                            {[
+                              { label: 'Amount Disbursed', val: `₦${Number(data?.amount_disbursed || 0).toLocaleString()}` },
+                              { label: 'Total Payback', val: `₦${totalToPay.toLocaleString()}` },
+                              { label: 'Monthly Payment', val: `₦${monthlyRepayment.toLocaleString()}` },
+                              { label: 'Interest Rate', val: data?.interest_rate || '3.5%' },
+                              { label: 'Tenure', val: `${data?.tenure || 12} Months` },
+                               { label: 'Next Payment', val: data?.next_payment_date ? new Date(data.next_payment_date).toLocaleDateString() : 'N/A' },
+                               { label: 'Final Payout', val: data?.final_payout_date ? new Date(data.final_payout_date).toLocaleDateString() : 'N/A' },
+                              { label: 'Remaining Balance', val: `₦${remainingVal.toLocaleString()}`, highlight: true }
+                            ].map((m, i) => (
+                              <div key={i} className="flex justify-between items-center border-b border-white/5 pb-3">
+                                 <span className="text-xs font-medium text-slate-400">{m.label}</span>
+                                 <span className={cn("text-sm font-black", m.highlight ? "text-red-400" : "text-white")}>{m.val}</span>
+                              </div>
+                            ))}
+                         </div>
+                      </div>
+                   </div>
+                </div>
             </motion.div>
           )}
 
@@ -650,7 +766,7 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                         <ShieldCheck className="w-12 h-12 text-green-400 mb-6" />
                         <h3 className="text-xl font-black mb-4">Asset Valuation</h3>
                         <p className="text-muted-foreground mb-6">Your vehicle's verified market value used to collateralize this loan.</p>
-                        <div className="text-3xl font-black text-white mb-8">₦{(carInfo.valuation || 0).toLocaleString()}</div>
+                        <div className="text-3xl font-black text-white mb-8">₦{Number(carInfo.valuation || 0).toLocaleString()}</div>
                      </div>
                      <button className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl font-black text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-3">
                         Request Valuation Review <ChevronRight className="w-4 h-4" />
@@ -722,17 +838,19 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
       {/* Action Modal */}
       <AnimatePresence>
         {modal.show && (
-          <>
+          <div className="fixed inset-0 flex items-center justify-center z-[200] p-6">
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              className="fixed inset-0 bg-black/80 backdrop-blur-md z-[200]" 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
               onClick={() => setModal({ ...modal, show: false })}
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-[#0f172a] border border-white/10 rounded-[3rem] p-10 z-[210] shadow-2xl"
+              className="relative w-full max-w-md bg-[#0f172a] border border-white/10 rounded-[3rem] p-10 shadow-2xl z-10"
             >
                <div className="flex flex-col items-center text-center">
                   <div className={cn(
@@ -775,7 +893,163 @@ export const UserPortal: FC<UserPortalProps> = ({ onLogout, userId }) => {
                   </div>
                </div>
             </motion.div>
-          </>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Detailed Overview Modal */}
+      <AnimatePresence>
+        {showDetailedModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-8">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDetailedModal(false)} className="absolute inset-0 bg-[#020617]/95 backdrop-blur-xl" />
+             <motion.div 
+               initial={{ opacity: 0, scale: 0.95, y: 30 }} 
+               animate={{ opacity: 1, scale: 1, y: 0 }} 
+               exit={{ opacity: 0, scale: 0.95, y: 30 }} 
+               className="w-full max-w-5xl bg-card border border-white/10 rounded-[3.5rem] relative z-10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+             >
+                <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/5">
+                   <div>
+                      <h3 className="text-3xl font-black text-white">Application Master File</h3>
+                      <p className="text-xs font-bold text-primary tracking-[0.3em] uppercase mt-1">Ref: {loanRef}</p>
+                   </div>
+                   <button onClick={() => setShowDetailedModal(false)} className="p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all group">
+                      <X className="w-6 h-6 text-muted-foreground group-hover:text-white transition-colors" />
+                   </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-12 space-y-12">
+                   <div className="grid md:grid-cols-2 gap-12">
+                      {/* Financial Structure */}
+                      <div className="space-y-6">
+                         <div className="text-[10px] font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-4">Financial Structure</div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Principal Disbursed</div>
+                               <div className="text-xl font-black text-white">₦{totalLoanVal.toLocaleString()}</div>
+                            </div>
+                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Total Payback</div>
+                               <div className="text-xl font-black text-primary">₦{Math.round(totalLoanVal * 1.035).toLocaleString()}</div>
+                            </div>
+                         </div>
+                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5 flex justify-between items-center">
+                            <div>
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Monthly Installment</div>
+                               <div className="text-xl font-black text-white">₦{monthlyRepayment.toLocaleString()}</div>
+                            </div>
+                            <div className="text-right">
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Status</div>
+                               <span className="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-[8px] font-black uppercase border border-green-500/20">{userStatus}</span>
+                            </div>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Tenure Selected</div>
+                               <div className="text-sm font-bold">{data?.tenure || 12} Months</div>
+                            </div>
+                            <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Remaining Balance</div>
+                               <div className="text-sm font-bold text-red-400">₦{remainingVal.toLocaleString()}</div>
+                            </div>
+                         </div>
+                      </div>
+
+                      {/* Collateral Details */}
+                      <div className="space-y-6">
+                         <div className="text-[10px] font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-4">Collateral Asset</div>
+                         <div className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden">
+                            <div className="aspect-video relative">
+                               <img src={frontPhoto || "https://images.unsplash.com/photo-1520031441872-265e4ff70366?auto=format&fit=crop&q=80&w=1000"} className="w-full h-full object-cover" />
+                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-bottom p-6 flex-col justify-end">
+                                  <div className="text-lg font-black">{carInfo.make} {carInfo.model}</div>
+                                  <div className="text-xs text-white/60 font-medium">{carInfo.year} • {carInfo.plate_number}</div>
+                               </div>
+                            </div>
+                            <div className="p-6 flex justify-between items-center">
+                               <div>
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Asset Valuation</div>
+                                  <div className="text-lg font-black text-white">₦{Number(carInfo.valuation || 0).toLocaleString()}</div>
+                               </div>
+                               <ShieldCheck className="w-8 h-8 text-green-500 opacity-50" />
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="grid md:grid-cols-2 gap-12 pt-6">
+                      {/* Payout Destination */}
+                      <div className="space-y-6">
+                         <div className="text-[10px] font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-4">Payout Account</div>
+                         <div className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4">
+                            <div>
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Account Name</div>
+                               <div className="text-sm font-bold text-white">{data?.account_name || userName}</div>
+                            </div>
+                            <div className="flex justify-between">
+                               <div>
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Bank Name</div>
+                                  <div className="text-sm font-bold text-white/80">{data?.bank_name || 'Generic Bank'}</div>
+                               </div>
+                               <div className="text-right">
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Account Number</div>
+                                  <div className="text-sm font-mono font-bold text-primary">{data?.account_number || 'XXXXXXXXXX'}</div>
+                               </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                               <div>
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">BVN</div>
+                                  <div className="text-[10px] text-white/60">Verified {data?.bvn ? '••••' + data.bvn.slice(-4) : 'N/A'}</div>
+                               </div>
+                               <div className="text-right">
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">NIN</div>
+                                  <div className="text-[10px] text-white/60">Verified {data?.nin ? '••••' + data.nin.slice(-4) : 'N/A'}</div>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+
+                      {/* Contact & Kin */}
+                      <div className="space-y-6">
+                         <div className="text-[10px] font-black uppercase text-primary tracking-widest border-l-2 border-primary pl-4">Emergency Contact (NOK)</div>
+                         <div className="bg-white/5 p-6 rounded-3xl border border-white/5 space-y-4 relative overflow-hidden">
+                            <Plus className="absolute bottom-0 right-0 w-20 h-20 text-white opacity-5 -translate-x-4 -translate-y-4" />
+                            <div>
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Next of Kin Name</div>
+                               <div className="text-sm font-bold text-white">{data?.nok_name || 'Not Provided'}</div>
+                            </div>
+                            <div className="flex justify-between">
+                               <div>
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Contact Phone</div>
+                                  <div className="text-sm font-bold text-white/80">{data?.nok_phone || 'N/A'}</div>
+                               </div>
+                               <div className="text-right">
+                                  <div className="text-[10px] text-muted-foreground uppercase mb-1">Email</div>
+                                  <div className="text-sm font-bold text-white/80">{data?.nok_email || 'N/A'}</div>
+                               </div>
+                            </div>
+                            <div>
+                               <div className="text-[10px] text-muted-foreground uppercase mb-1">Address</div>
+                               <div className="text-[10px] text-white/60 leading-relaxed">
+                                  {data?.nok_address || 'Address not listed'}
+                                  {data?.nok_city && `, ${data.nok_city}`}
+                                  {data?.nok_state && `, ${data.nok_state}`}
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="p-8 border-t border-white/5 bg-[#0f172a] flex justify-center gap-4">
+                   <button 
+                     onClick={() => setShowDetailedModal(false)}
+                     className="px-12 py-4 bg-primary text-primary-foreground rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                   >
+                      Understood, Close File
+                   </button>
+                </div>
+             </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

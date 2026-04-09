@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { pool } from '../config/db';
+import { NotificationService } from '../services/notificationService';
 
 const logAudit = async (adminId: string | null, loanId: string, action: string, details: string) => {
     try {
@@ -14,15 +15,59 @@ const logAudit = async (adminId: string | null, loanId: string, action: string, 
 };
 
 const calculateRiskScore = (amount: number, valuation: number, isOwner: boolean) => {
-    // 0 = Best (Low Risk), 100 = Worst (High Risk)
-    // 1. LTV (Loan to Value Ratio) - weighted 70%
-    const ltv = (amount / valuation) * 100;
-    
-    // 2. Ownership Status - weighted 30%
+    const ltv = (amount / (valuation || amount * 1.5)) * 100;
     const ownershipPenalty = isOwner ? 0 : 30;
-    
     const rawScore = (ltv * 0.7) + (ownershipPenalty);
     return Math.min(100, Math.max(0, Math.round(rawScore)));
+};
+
+const enrichLoanData = (loan: any) => {
+    const principal = Number(loan.amount);
+    const interestRate = 0.035; // 3.5% per month
+    const tenure = Number(loan.tenure) || 1;
+    
+    const totalPayback = principal + (principal * interestRate * tenure);
+    const monthlyPayment = totalPayback / tenure;
+    const amountPaid = Number(loan.amount_paid || 0);
+    const remainingBalance = totalPayback - amountPaid;
+
+    // Repayment Plan Generation
+    const repaymentPlan = [];
+    for (let i = 0; i < tenure; i++) {
+        const dueDate = new Date(loan.created_at);
+        dueDate.setMonth(dueDate.getMonth() + i + 1);
+        
+        const isPaid = amountPaid >= (monthlyPayment * (i + 1)) - 0.01;
+        const isMissed = !isPaid && new Date() > dueDate;
+
+        repaymentPlan.push({
+            month: `Month ${i+1}`,
+            amount: monthlyPayment,
+            due_date: dueDate.toISOString(),
+            status: isPaid ? 'Paid' : (isMissed ? 'Missed' : 'Upcoming')
+        });
+    }
+
+    // Next Payment Date logic: Month N+1 if they have paid N months
+    const monthsPaid = Math.floor(amountPaid / (monthlyPayment - 0.01));
+    const nextPaymentDate = new Date(loan.created_at);
+    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + monthsPaid + 1);
+
+    const finalPayoutDate = new Date(loan.created_at);
+    finalPayoutDate.setMonth(finalPayoutDate.getMonth() + tenure);
+
+    return {
+        ...loan,
+        interest_rate: "3.5%",
+        amount_disbursed: principal,
+        total_payback: totalPayback,
+        monthly_payment: monthlyPayment,
+        remaining_balance: remainingBalance,
+        next_payment_date: nextPaymentDate.toISOString(),
+        final_payout_date: finalPayoutDate.toISOString(),
+        repayment_plan: repaymentPlan,
+        risk_index: calculateRiskScore(principal, Number(loan.valuation), loan.is_owner === 1 || loan.is_owner === true)
+    };
 };
 
 export const createLoan = async (req: Request, res: Response) => {
@@ -33,7 +78,9 @@ export const createLoan = async (req: Request, res: Response) => {
         amount, 
         tenure, 
         car_make, car_model, car_year, car_plate, 
-        is_owner, insurance_type, valuation
+        is_owner, insurance_type, valuation,
+        bank_name, account_number, account_name, nin, bvn,
+        nok_name, nok_phone, nok_email, nok_address, nok_city, nok_state, nok_country
     } = req.body;
 
     const connection = await pool.getConnection();
@@ -41,52 +88,50 @@ export const createLoan = async (req: Request, res: Response) => {
     try {
         await connection.beginTransaction();
 
-        // 0. Ensure user exists (especially for mock/demo IDs from frontend)
+        // Ensure user exists
         const [userExists] : any = await connection.execute('SELECT id FROM users WHERE id = ?', [user_id]);
         if (userExists.length === 0) {
-            console.log(`User ${user_id} not found, creating a mock user record to satisfy foreign key...`);
             await connection.execute(
                 'INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
                 [user_id, 'Guest User', `guest_${user_id.substring(0,6)}@pettycash.com.ng`, 'mock_password', 'user']
             );
         }
 
-        // 1. Create Loan Record
         const loanId = uuidv4();
         const loanReference = `PC-${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`;
         
         await connection.execute(
-            'INSERT INTO loans (id, user_id, amount, tenure, loan_reference, status) VALUES (?, ?, ?, ?, ?, ?)',
-            [loanId, user_id, amount, tenure || 12, loanReference, 'pending']
+            `INSERT INTO loans (
+                id, user_id, amount, tenure, loan_reference, status,
+                bank_name, account_number, account_name, nin, bvn,
+                nok_name, nok_phone, nok_email, nok_address, nok_city, nok_state, nok_country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                loanId, user_id, amount, tenure || 12, loanReference, 'pending',
+                bank_name || '', account_number || '', account_name || '', nin || '', bvn || '',
+                nok_name || '', nok_phone || '', nok_email || '', nok_address || '', nok_city || '', nok_state || '', nok_country || ''
+            ]
         );
 
-        // 2. Store Car Details
         const carDetailsId = uuidv4();
         await connection.execute(
             'INSERT INTO car_details (id, loan_id, make, model, year, plate_number, is_owner, insurance_type, valuation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [carDetailsId, loanId, car_make, car_model, car_year, car_plate || '', is_owner === 'true' || is_owner === true, insurance_type || 'none', valuation || parseFloat(amount) * 1.5]
         );
 
-        // 3. Store Documents (File Uploads)
         if (files) {
-            // Handle different multer formats (array or fields)
             const fileList = Array.isArray(files) ? files : Object.values(files).flat();
-            
             for (const file of fileList) {
                 const docId = uuidv4();
-                // Map fieldname to a cleaner document type name if needed
-                const docType = file.fieldname; 
-                
                 await connection.execute(
                     'INSERT INTO documents (id, loan_id, document_type, file_url, status) VALUES (?, ?, ?, ?, ?)',
-                    [docId, loanId, docType, `/uploads/${file.filename}`, 'pending']
+                    [docId, loanId, file.fieldname, `/uploads/${file.filename}`, 'pending']
                 );
             }
         }
 
         await connection.commit();
 
-        // 4. Send Immediate Notification (Email & SMS)
         try {
             const [userRows]: any = await pool.execute('SELECT name, email, phone FROM users WHERE id = ?', [user_id]);
             if (userRows.length > 0) {
@@ -97,19 +142,16 @@ export const createLoan = async (req: Request, res: Response) => {
                     Number(amount).toLocaleString()
                 );
             }
-        } catch (noticeErr) {
-            console.error('Non-critical Notification Error:', noticeErr);
-        }
+        } catch (noticeErr) {}
 
         res.status(201).json({
-            message: 'Loan application and documents submitted successfully.',
+            message: 'Loan application submitted successfully.',
             loan_id: loanId,
             reference: loanReference
         });
     } catch (error) {
         await connection.rollback();
-        console.error('Loan/Document Creation Error:', error);
-        res.status(500).json({ message: 'Submission failed. Please check your inputs and files.' });
+        res.status(500).json({ message: 'Submission failed.' });
     } finally {
         connection.release();
     }
@@ -118,23 +160,39 @@ export const createLoan = async (req: Request, res: Response) => {
 export const getLoanDetails = async (req: Request, res: Response) => {
     const { id } = req.params;
     try {
-        const [loans]: any = await pool.execute('SELECT l.*, u.name FROM loans l JOIN users u ON l.user_id = u.id WHERE l.id = ?', [id]);
+        const [loans]: any = await pool.execute(`
+            SELECT 
+                l.*, u.name as user_name,
+                c.make, c.model, c.year, c.plate_number, c.valuation, c.is_owner,
+                IFNULL((SELECT SUM(amount) FROM payments WHERE loan_id = l.id AND status = 'successful'), 0) as amount_paid
+            FROM loans l 
+            JOIN users u ON l.user_id = u.id 
+            LEFT JOIN car_details c ON l.id = c.loan_id
+            WHERE l.id = ?
+        `, [id]);
+        
         if (loans.length === 0) {
             return res.status(404).json({ message: 'Loan not found' });
         }
 
-        const [carDetails]: any = await pool.execute('SELECT * FROM car_details WHERE loan_id = ?', [id]);
-        const [docs]: any = await pool.execute('SELECT * FROM documents WHERE loan_id = ?', [id]);
+        const loan = loans[0];
+        const [docs]: any = await pool.execute('SELECT id, document_type as type, file_url as url FROM documents WHERE loan_id = ?', [id]);
         const [history]: any = await pool.execute('SELECT id, payment_date as date, amount, payment_method as method, status FROM payments WHERE loan_id = ? ORDER BY payment_date DESC', [id]);
 
         res.json({
-            ...loans[0],
-            car: carDetails[0] || null,
+            ...enrichLoanData(loan),
+            car: {
+                make: loan.make,
+                model: loan.model,
+                year: loan.year,
+                plate_number: loan.plate_number,
+                valuation: loan.valuation,
+                is_owner: loan.is_owner
+            },
             documents: docs,
             history: history
         });
     } catch (error) {
-        console.error('Fetch Loan Error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -142,10 +200,19 @@ export const getLoanDetails = async (req: Request, res: Response) => {
 export const getUserLoans = async (req: Request, res: Response) => {
     const { userId } = req.params;
     try {
-        const [loans]: any = await pool.execute('SELECT * FROM loans WHERE user_id = ? ORDER BY created_at DESC', [userId]);
-        res.json(loans);
+        const [loans]: any = await pool.execute(`
+            SELECT 
+                l.*,
+                c.make, c.model, c.year, c.plate_number, c.valuation, c.is_owner,
+                IFNULL((SELECT SUM(amount) FROM payments WHERE loan_id = l.id AND status = 'successful'), 0) as amount_paid
+            FROM loans l 
+            LEFT JOIN car_details c ON l.id = c.loan_id
+            WHERE l.user_id = ? 
+            ORDER BY l.created_at DESC
+        `, [userId]);
+        
+        res.json(loans.map((l: any) => enrichLoanData(l)));
     } catch (error) {
-        console.error('Fetch User Loans Error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
@@ -162,26 +229,20 @@ export const getAdminLoans = async (req: Request, res: Response) => {
                     FROM (
                         SELECT id, document_type, file_url as url FROM documents WHERE loan_id = l.id
                     ) d
-                ) as documents
+                ) as documents,
+                IFNULL((SELECT SUM(amount) FROM payments WHERE loan_id = l.id AND status = 'successful'), 0) as amount_paid
             FROM loans l
             JOIN users u ON l.user_id = u.id
             LEFT JOIN car_details c ON l.id = c.loan_id
             ORDER BY l.created_at DESC
         `);
         
-        const enriched = loans.map((l: any) => ({
-            ...l,
-            risk_index: calculateRiskScore(Number(l.amount), Number(l.valuation || (Number(l.amount) * 1.5)), l.is_owner === 1 || l.is_owner === true)
-        }));
-
-        res.json(enriched);
+        res.json(loans.map((l: any) => enrichLoanData(l)));
     } catch (error) {
         console.error('Fetch Admin Loans Error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
-import { NotificationService } from '../services/notificationService';
 
 export const updateLoanStatus = async (req: Request, res: Response) => {
     const { id } = req.params;

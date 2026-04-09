@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db';
 import apiRoutes from './routes/api';
+import { startReminderService } from './services/reminderService';
+import { connectDB } from './config/db';
 
 dotenv.config();
 
@@ -16,8 +17,6 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api', apiRoutes);
-
-import { startReminderService } from './services/reminderService';
 
 // Main Entry
 const startServer = async () => {
