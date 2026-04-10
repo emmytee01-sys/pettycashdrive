@@ -31,7 +31,34 @@ export const connectDB = async () => {
                 FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
             )
         `);
-        console.log('✅ audit_logs table verified.');
+
+        // Check and add new columns to loans table
+        const [loanColumns]: any = await connection.execute('SHOW COLUMNS FROM loans');
+        const columnNames = loanColumns.map((c: any) => c.Field);
+        const newCols = [
+            'bank_name VARCHAR(100)',
+            'account_number VARCHAR(20)',
+            'account_name VARCHAR(255)',
+            'nin VARCHAR(20)',
+            'bvn VARCHAR(20)',
+            'nok_name VARCHAR(255)',
+            'nok_phone VARCHAR(20)',
+            'nok_email VARCHAR(100)',
+            'nok_address TEXT',
+            'nok_city VARCHAR(100)',
+            'nok_state VARCHAR(100)',
+            'nok_country VARCHAR(100)'
+        ];
+
+        for (const colDef of newCols) {
+            const colName = colDef.split(' ')[0];
+            if (!columnNames.includes(colName)) {
+                await connection.execute(`ALTER TABLE loans ADD COLUMN ${colDef}`);
+                console.log(`✅ Added column ${colName} to loans table.`);
+            }
+        }
+
+        console.log('✅ Database schema verified.');
         
         connection.release();
     } catch (error) {

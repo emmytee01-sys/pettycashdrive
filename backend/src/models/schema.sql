@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     role ENUM('admin', 'user') DEFAULT 'user',
-    credit_score INT DEFAULT 650,
+    credit_score INT DEFAULT 100,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS loans (
     status ENUM('pending', 'approved', 'disbursed', 'rejected', 'completed') DEFAULT 'pending',
     loan_reference VARCHAR(50) UNIQUE NOT NULL,
     admin_notes TEXT,
+    -- Payout Bank Details
+    bank_name VARCHAR(100),
+    account_number VARCHAR(20),
+    account_name VARCHAR(255),
+    nin VARCHAR(20),
+    bvn VARCHAR(20),
+    -- Next of Kin Details
+    nok_name VARCHAR(255),
+    nok_phone VARCHAR(20),
+    nok_email VARCHAR(100),
+    nok_address TEXT,
+    nok_city VARCHAR(100),
+    nok_state VARCHAR(100),
+    nok_country VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
