@@ -114,9 +114,50 @@ const Navbar = ({ user, onLogout }: { user: { role: string } | null, onLogout?: 
             <a href="#" className="block text-lg font-medium">How It Works</a>
             <a href="#" className="block text-lg font-medium">For Dealers</a>
             <a href="#" className="block text-lg font-medium">About Us</a>
-            <button className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold">
-              Apply Now
-            </button>
+            
+            {user ? (
+               <div className="pt-4 border-t border-white/10 space-y-4">
+                  <div className="flex items-center gap-4">
+                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                        <User className="w-5 h-5" />
+                     </div>
+                     <div>
+                        <div className="text-sm font-black text-white">{user.role.toUpperCase()}</div>
+                        <div className="text-[10px] text-muted-foreground font-bold italic">Logged In</div>
+                     </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      onLogout?.();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-bold"
+                  >
+                    Sign Out
+                  </button>
+               </div>
+            ) : (
+               <div className="pt-4 border-t border-white/10 space-y-4">
+                  <button 
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openAuth'));
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-3 bg-white/5 border border-white/10 text-white rounded-xl font-bold"
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openForm'));
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-[1.02] transition-transform shadow-lg shadow-primary/20"
+                  >
+                    Apply Now
+                  </button>
+               </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
