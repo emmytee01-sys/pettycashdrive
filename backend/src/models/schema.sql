@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS loans (
     id CHAR(36) PRIMARY KEY,
     user_id CHAR(36) NOT NULL,
     amount DECIMAL(15, 2) NOT NULL,
+    paid DECIMAL(15, 2) DEFAULT 0,
     tenure INT NOT NULL, -- months
     status ENUM('pending', 'approved', 'disbursed', 'rejected', 'completed') DEFAULT 'pending',
     loan_reference VARCHAR(50) UNIQUE NOT NULL,

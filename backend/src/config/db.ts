@@ -36,6 +36,7 @@ export const connectDB = async () => {
         const [loanColumns]: any = await connection.execute('SHOW COLUMNS FROM loans');
         const columnNames = loanColumns.map((c: any) => c.Field);
         const newCols = [
+            'paid DECIMAL(15, 2) DEFAULT 0',
             'bank_name VARCHAR(100)',
             'account_number VARCHAR(20)',
             'account_name VARCHAR(255)',
