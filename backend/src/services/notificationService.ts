@@ -23,7 +23,7 @@ export class NotificationService {
         sms: message,
         type: "plain",
         api_key: process.env.TERMII_API_KEY,
-        channel: "generic",
+        channel: "dnd",
       };
 
       const TERMII_BASE_URL = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
