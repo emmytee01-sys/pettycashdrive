@@ -19,11 +19,11 @@ export class NotificationService {
 
       const data = {
         to: formattedPhone,
-        from: process.env.TERMII_SMS_SENDER_ID || "N-Alert",
+        from: process.env.TERMII_SMS_SENDER_ID || "Paymyrent",
         sms: message,
         type: "plain",
         api_key: process.env.TERMII_API_KEY,
-        channel: "dnd",
+        channel: "generic",
       };
 
       const TERMII_BASE_URL = process.env.TERMII_BASE_URL || 'https://v3.api.termii.com';
