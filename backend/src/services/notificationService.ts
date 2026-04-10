@@ -19,7 +19,7 @@ export class NotificationService {
 
       const data = {
         to: formattedPhone,
-        from: "Paymyrent",
+        from: process.env.TERMII_SMS_SENDER_ID || "N-Alert",
         sms: message,
         type: "plain",
         api_key: process.env.TERMII_API_KEY,
